@@ -4,7 +4,7 @@
 Rscript for learning and research
 
 #### 软件架构
-软件架构说明
+基于R >= 3.6.0,推荐使用rstudio运行。
 
 
 #### 安装教程

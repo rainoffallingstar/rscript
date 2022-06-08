@@ -7,6 +7,7 @@ library(tfdatasets)
 library(tfautograph)
 library(reticulate)
 library(purrr)
+library(pins)
 
 # 导入数据、调整数据
 flowers <- pins::pin("https://storage.googleapis.com/download.tensorflow.org/example_images/flower_photos.tgz", "flower_photos")

@@ -2,13 +2,14 @@
 # test in manjaro(a archlinux distribution)
 # author: rainoffallingstar
 #2022-06-08
+
+# 由于要用到arrow包，编译起来可能有困难，请在系统层面上先安装arrow包，ubuntu除外。
 install.packages("pins")
 install.packages("keras")
 library(keras)
 install_keras() # the terminal will suggest you to install miniconda,however in linux they will creat a virtual python environment for you
 # 如果需要调用gup，则将上一行替代为以下
 # install_tensorflow(gpu=TRUE)
-install.packages(pins)
 devtools::install_github("rstudio/tfhub")
 library(tfhub)
 install_tfhub()

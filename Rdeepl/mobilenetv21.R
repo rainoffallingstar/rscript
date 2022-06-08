@@ -111,7 +111,8 @@ history <- model %>%
   fit(
     prepare(labeled_ds, batch_size = 32, shuffle_buffer_size = 100),
     epochs = 5,
-    verbose = 2
+    verbose = 2,
+    validation_split = 0.2
   )
 
 # 保存模型 

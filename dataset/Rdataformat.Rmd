@@ -1,0 +1,47 @@
+---
+title: "R dataformat"
+author: "Yanhua Zheng"
+date: "`r Sys.Date()`"
+output: pdf_document
+---
+
+
+### reactomic 质谱数据
+
+质谱数据最终应处理为含有mz（质量电荷比）、rt（停留时间）、强度及组信息的list数据表格，其中mz、rt等各元素以dataframe的格式呈现。
+
+```{r list structure, echo=TRUE, message=TRUE, warning=FALSE}
+library(pmd)
+data("spmeinvivo")
+str(spmeinvivo)
+```
+另一个示例医学数据：
+
+```{r list structure, echo=TRUE, message=TRUE, warning=FALSE}
+library(enviGCMS)
+list <- enviGCMS::getmzrtcsv('MTBLS28posmzrt.csv')
+str(list)
+```
+
+
+
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r cars}
+summary(cars)
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.

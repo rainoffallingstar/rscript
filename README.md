@@ -21,6 +21,7 @@ Rscript for learning and research
 -   [ ] 生存分析
 -   [ ] meta分析
 -   [ ] tidy-R
+-   [ ] R绘图与数据可视化、科研绘图
 -   [ ] 其他
 
 #### 使用说明及参与贡献

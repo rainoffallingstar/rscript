@@ -12,7 +12,7 @@ Rscript for learning and research
 
 -   [ ] R with deepL
 -   [ ] R with ML（including SVM）
--   [ ] reactomic
+-   [ ] reactomic,"-omics"
 -   [ ] 线性回归 - base-R - tidy-R
 -   [ ] 逻辑斯蒂回归、LDA、QDA、KNN
 -   [ ] 岭回归、lasso

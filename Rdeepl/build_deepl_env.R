@@ -2,7 +2,7 @@
 # test in manjaro(a archlinux distribution)
 # author: rainoffallingstar
 #2022-06-08
-
+# 在matpool的ubuntu18的机器上时，需要补充依赖：sudo apt-get install libgdal-dev gdal-bin libproj-dev proj-data proj-bin libgeos-dev
 # 由于要用到arrow包，编译起来可能有困难，请在系统层面上先安装arrow包，ubuntu除外。
 install.packages("pins")
 install.packages("keras")

@@ -19,3 +19,10 @@ surv.obj
 surv.all <- survfit(surv.obj ~ 1)
 summary(surv.all,censored = TRUE)
 plot(surv.all,mark.time = TRUE)
+
+# 对于rx进行生存分析并比较差异性
+surv.treat <- survfit(surv.obj ~ rx,data = ovarian)
+summary(surv.treat)
+library(survminer)
+ggsurvplot(surv.treat,data=ovarian,pval =TRUE)
+survdiff(suv.obj ~ rx,data = ovarian)

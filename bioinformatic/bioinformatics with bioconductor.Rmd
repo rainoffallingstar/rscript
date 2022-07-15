@@ -1,0 +1,102 @@
+---
+title: "bioinformatics with bioconductor"
+author: "fallingstar"
+date: "2022-07-15"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+### 生信：基因、转录、代谢及表型
+
+#### 数据
+
+##### 数据来源及下载工具
+
+1. genes and clinical information of patients   The Cancer Genome Atlas (TCGA) database ([https://portal.gdc.cancer.gov//](https://portal.gdc.cancer.gov//)
+2. GEO Datasets: [https://www.ncbi.nlm.nih.gov/gds/](https://www.ncbi.nlm.nih.gov/gds/) 
+3. UCSC Xena server https://xenabrowser.net/
+4. Tumor Immune Estimation Resource (TIMER; cistrome.shinyapps.io/timer)
+5. 传统bulk数据与单细胞数据
+6. TCGA-COAD患者的临床信息和生存数据，以及基因表达、体细胞突变、拷贝数变异和甲基化测序结果。GEO中结肠癌数据集GSE39582的患者临床信息和生存数据及RAW CEL数据文件。GEO数据库中还获得了GSE146771数据集中COAD患者单细胞转录组数据集。研究也从MSigDB数据库下载了KEGG_GLYCEROLIPID_METABOLISM基因组和50个癌症标志基因组。其中从KEGG_GLYCEROLIPID_METABOLISM 通路中共获得49个甘油脂代谢相关基因。
+> tcga（肿瘤）、geo（非肿瘤）、seer数据库（流行病学、预后等）
+> 共表达基因分析（overlap crosstalk、random forest 非监督学习聚类算法）、基因互作用模块、基因分析与测定 
+
+##### 数据格式
+
+1. 序列数据（DNA；RNA；protein） fasta文件
+
+2. 微阵列 DNA；RNA；protein CEL文件
+
+3. GWAS
+
+4. mass spectrometry mzxml\mzml\bruker\cdf
+
+5. ngs fastq
+
+
+#### 数据前处理：数据清洗与ID映射
+> 软件包：AnnotationDbi
+> 
+
+1. All gene features (e.g., chromosome positions, gene types, Ensembl IDs and official symbols) were annotated by the GENCODE project (v22)
+
+2. Digital focal-level copy number variation (CNV) values were calculated from tumor aliquots using a “masked copy number fragment” file by GISTIC2
+
+3. A Cleveland dot plot was drawn to visualize the frequency of CNV by the R package “ggpubr”.
+
+4. Box plots were adopted to compare the expression of CRGs in various datasets using the R package “ggplot2”.
+
+5.  a meta-analysis of the results of differential expression to improve the statistical power of our study. We used the Q test (I2 statistics) as the assessment of the heterogeneity between multiple datasets.
+
+6. A forest plot was utilized to show fold change and related 95% CI of CRGs using the R package “forestplot”.
+
+7. (1)无临床资料的患者被排除。(2)生存时间为0或生存状态未知的患者被排除。(3)将两个数据集的基因表达矩阵中的基因ID类型同步到gene Symbol中。当多个基因ID同步到一个gene Symbol时，选择中值表示表达水平。
+
+#### 基因通路与基因本体论分析（GO）
+> 基因本体论（注释）\本体论富集\基因通路pathoway注释\通路富集分析
+> 基因表达的差异性分析
+
+1. gene network analysis with the GENEMANIA website
+
+2. 通路富集分析：pathway enrichment analysis of CRGs with the Metascape [[26](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC9141858/#B26-genes-13-00851)] website
+
+3. enrichment analysis was performed by the R package “clusterProfiler”
+
+#### 监督学习下的有效基因印记
+
+1.  used SIS and least absolute shrinkage and selection operator (LASSO)−penalized Cox regression to screen for CRGs associated with survival using the R package “SIS”
+
+2. alculated the risk score using the regression coefficients of the identified prognostic signature of CRGs for OS and PFS, respectively. Subsequently, we classified patients into the high-risk and low-risk groups according to the median value of risk scores. The Kaplan−Meier survival curve was plotted to compare the OS or PFS between high-risk and low-risk groups by the R package “ggsurvplot”.
+
+#### 代谢注释及代谢通路下游分析
+> KEGG\KEGG pathoway
+> 软件包：KEGG
+> 标注基因/蛋白在通路中的位置
+
+#### 分子进化与系统树
+
+#### 
+
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r cars}
+summary(cars)
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.

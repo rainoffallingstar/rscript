@@ -54,4 +54,29 @@ train.Direction <- Direction[train]
 set.seed(1)
 knn.pred=knn(train.X,test.X,train.Direction,k=10)
 table(knn.pred,Direction.2005)
+
+# 留一验证法
+cv.error=rep(0,5)
+for (i in 1:5){
+  + glm.fit(mpg~poly(Lag1,i),data=Smarket)
+  + cv.error[i]=cv.glm(Auto,glm.fit)$dolta[i]
+  +}
+cv.error
+
+# k折交叉验证法
+
+set.seed(17)
+cv.error.10=rep(0,10)
+for (i in 1:10){
+  + glm.fit(mpg~poly(Lag1,i),data=Smarket)
+  + cv.error[i]=cv.glm(Auto,glm.fit,K=10)$dolta[i]
+  +}
+cv.error
+
+# 自助法
+略
+  
+}
+
+
   

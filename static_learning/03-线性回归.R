@@ -35,3 +35,59 @@ names(Carseats)
 lm.fit=lm(Sales~.,data=Carseats)
 summary(lm.fit)
 contrasts(ShelveLoc)
+
+# 最优子集选择、向前选择、向后选择
+library(leaps)
+regfit.full=regsubsets(medv~. , data=Boston)
+regfit.bwd=regsubsets(medv~. , data=Boston,
+                      method = "backward")
+regfit.fwd=regsubsets(medv~. , data=Boston,
+                      method = "forward")
+summary(regfit.bwd)
+coef(regfit.bwd,8)
+coef(regit.fwd,8)
+coef(regfit.full,8)
+
+# 岭回归和lasso
+
+# 数据矩阵化
+
+x=model.matrix(crim~.,data = Boston)[,-14] #将响应变量从x变量中剔除
+y= medv
+
+library(glmnet)
+grid=10^seq(10,-2,length=100)
+ridge.mod=glmnet(x,y,alpha=0,lambda=grid)
+plot(ridge.mod)
+lasso.mod=glmnet(x,y,alpha=1,lambda=grid)
+plot(lasso.mod)
+
+# 主成分回归与偏最小二乘回归
+library(pls)
+set.seed(2)
+pcr.fit=pcr(medv~. , data=Boston,scale=TRUE,
+            validation="CV")
+summary(pcr.fit)
+validationplot(pcr.fit,val.type="MSEP")
+pls.fit=plsr(medv~. , data=Boston,scale=TRUE,
+            validation="CV")
+summary(pls.fit)
+validationplot(pls.fit,val.type="MSEP")
+
+# 回归样条
+library(aplines)
+fit= lm(medv~bs(age,knots=c(25,)).,data = Boston)
+# 自然样条
+fit= lm(medv~ns(age,df=4).,data = Boston)
+# 光滑样条
+fit=smooth.spline(age,wage,df=4)
+#局部回归
+fit=loess(wage~age,span=.2,data=Wage)
+
+#GAM
+#略
+
+
+
+
+

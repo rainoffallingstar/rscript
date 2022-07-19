@@ -13,12 +13,12 @@ Rscript for learning and research
 -   [ ] R with deepL
 -   [ ] R with ML（including SVM）
 -   [ ] reactomic,"-omics"
--   [ ] 线性回归 - base-R - tidy-R
--   [ ] 逻辑斯蒂回归、LDA、QDA、KNN
--   [ ] 岭回归、lasso
--   [ ] PGR、PLS
--   [ ] 决策树
--   [ ] 生存分析
+-   [X] 线性回归 - base-R - tidy-R
+-   [X] 逻辑斯蒂回归、LDA、QDA、KNN
+-   [X] 岭回归、lasso
+-   [X] PGR、PLS
+-   [X] 决策树
+-   [X] 生存分析
 -   [ ] meta分析
 -   [ ] tidy-R
 -   [ ] R绘图与数据可视化、科研绘图

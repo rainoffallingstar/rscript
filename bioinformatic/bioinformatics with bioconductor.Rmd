@@ -57,7 +57,8 @@ knitr::opts_chunk$set(echo = TRUE)
 
 #### 基因通路与基因本体论分析（GO）
 > 基因本体论（注释）\本体论富集\基因通路pathoway注释\通路富集分析
-> 基因表达的差异性分析
+> 基因表达的差异性分析、筛选差异表达基因（DEGs）
+> 基因互作网络（PPI）
 
 1. gene network analysis with the GENEMANIA website
 
@@ -78,7 +79,12 @@ knitr::opts_chunk$set(echo = TRUE)
 
 #### 分子进化与系统树
 
-#### 
+#### roadmap
+
+1. 基因组、转录组、代谢组名词及意义
+2. bioconductor workflow
+3. bioconductor cookbook
+
 
 
 ## R Markdown

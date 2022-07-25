@@ -1,0 +1,151 @@
+---
+title: "Using Bioconductor with High Throughput Assays|翻译"
+author: "fallingstar"
+date: "2022-07-25"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Using Bioconductor with High Throughput Assays
+Bioconductor Maintainer1*
+
+1Roswell Park Cancer Institute, Elm and Carlton St, Buffalo, NY 14263
+
+*maintainer@bioconductor.org
+
+24 April 2018
+Abstract
+Bioconductor includes packages for analysis of diverse areas of high-throughput assays such as flow cytometry, quantitative real-time PCR, mass spectrometry, proteomics and other cell-based data.
+Contents
+1 Version Info
+2 Sample Workflow
+3 Installation and Use
+4 Exploring Package Content
+5 Diverse Assays Resources
+5.1 Flow Cytometry
+5.2 Cell-based Assays
+5.3 High-throughput qPCR Assays
+5.4 Mass Spectrometry and Proteomics data
+5.5 Imaging Based Assays
+1Version Info
+R version: R version 4.2.0 RC (2022-04-19 r82224)
+Bioconductor version: 3.15
+Package version: 1.20.0
+
+2Sample Workflow
+The following psuedo-code illustrates a typical R / Bioconductor session. It makes use of the flow cytometry packages to load, transform and visualize the flow data and gate certain populations in the dataset.
+
+The workflow loads the flowCore, flowStats and flowWorkspace packages and its dependencies. It loads the ITN data with 15 samples, each of which includes, in addition to FSC and SSC, 5 fluorescence channels: CD3, CD4, CD8, CD69 and HLADR.
+
+## Load packages
+library(flowCore)
+library(flowStats)
+library(flowWorkspace)
+library(ggcyto)
+library(scales)
+
+## Load data
+data(ITN)
+ITN
+## A flowSet with 15 experiments.
+## 
+## An object of class 'AnnotatedDataFrame'
+##   rowNames: sample01 sample02 ... sample15 (15 total)
+##   varLabels: GroupID SiteCode ... name (7 total)
+##   varMetadata: labelDescription
+## 
+## column names(8): FSC SSC ... HLADr Time
+First, we need to transform all the fluorescence channels. Using a GatingSet object can help to keep track of our progress.
+
+## Create a workflow instance and transform data using asinh
+gs <- GatingSet(ITN)
+trans.obj <- trans_new("myAsinh", transform=asinh, inverse=sinh)
+tl <- transformerList(colnames(ITN)[3:7], trans.obj)
+gs <- transform(gs, tl)
+Next we use the lymphGate function to find the T-cells in the CD3/SSC projection.
+
+## Identify T-cells population
+lg <- lymphGate(gs_cyto_data(gs), channels=c("CD3", "SSC"),
+                preselection="CD4", filterId="TCells",
+                scale=2.5)
+gs_pop_add(gs, lg)
+## [1] 2
+recompute(gs)
+## done!
+ggcyto(gs, aes(x = CD3, y = SSC)) + geom_hex(bins = 32) + geom_gate("TCells")
+
+
+A typical workflow for flow cytometry data analysis in Bioconductor flow packages include data transformation, normalization, filtering, manual gating, semi-automatic gating and automatic clustering if desired. Details can be found in flowWorkFlow.pdf or the vignettes of the flow cytometry packages.
+
+[ Back to top ]
+
+3Installation and Use
+Follow installation instructions to start using these packages. To install the flowCore package and all of its dependencies, evaluate the commands
+
+if (!"BiocManager" %in% rownames(installed.packages()))
+     install.packages("BiocManager")
+BiocManager::install("flowCore")
+Package installation is required only once per R installation. View a full list of available packages.
+
+To use the flowCore package, evaluate the command
+
+library("flowCore")
+This instruction is required once in each R session.
+
+[ Back to top ]
+
+4Exploring Package Content
+Packages have extensive help pages, and include vignettes highlighting common use cases. The help pages and vignettes are available from within R. After loading a package, use syntax like
+
+help(package="flowCore")
+?read.FCS
+to obtain an overview of help on the flowCore package, and the read.FCS function, and
+
+browseVignettes(package="flowCore")
+to view vignettes (providing a more comprehensive introduction to package functionality) in the flowCore package. Use
+
+help.start()
+to open a web page containing comprehensive help resources.
+
+[ Back to top ]
+
+5Diverse Assays Resources
+The following provide a brief overview of packages useful for analysis of high-throughput assays. More comprehensive workflows can be found in documentation (available from package descriptions) and in Bioconductor publications.
+
+5.1Flow Cytometry
+These packages use standard FCS files, including infrastructure, utilities, visualization and semi-autogating methods for the analysis of flow cytometry data.
+
+flowCore, flowViz, flowQ, flowStats, flowUtils, flowFP, flowTrans,
+
+Algorithms for clustering flow cytometry data are found in these packages:
+
+flowClust, flowMeans, flowMerge, SamSPECTRAL
+
+A typical workflow using the packages flowCore, flowViz, flowQ and flowStats is described in detail in flowWorkFlow.pdf. The data files used in the workflow can be downloaded from here.
+
+5.2Cell-based Assays
+These packages provide data structures and algorithms for cell-based high-throughput screens (HTS).
+
+cellHTS2, RNAither
+
+This package supports the xCELLigence system which contains a series of real-time cell analyzer (RTCA).
+
+RTCA
+
+5.3High-throughput qPCR Assays
+These package provide algorithm for the analysis of cycle threshold (Ct) from quantitative real-time PCR data.
+
+HTqPCR, ddCt, qpcrNorm
+
+5.4Mass Spectrometry and Proteomics data
+These packages provide framework for processing, visualization, and statistical analysis of mass spectral and proteomics data.
+
+clippda, MassArray, MassSpecWavelet, PROcess, flagme, xcms
+
+5.5Imaging Based Assays
+These packages provide infrastructure for image-based phenotyping and automation of other image-related tasks:
+
+EBImage, imageHTS

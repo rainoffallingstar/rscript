@@ -60,6 +60,8 @@ ITN
 ## column names(8): FSC SSC ... HLADr Time
 First, we need to transform all the fluorescence channels. Using a GatingSet object can help to keep track of our progress.
 
+> 首先，我们需要转换所有荧光通道。使用GatingSet对象可以帮助跟踪我们的进度。
+
 ## Create a workflow instance and transform data using asinh
 gs <- GatingSet(ITN)
 trans.obj <- trans_new("myAsinh", transform=asinh, inverse=sinh)
@@ -80,7 +82,7 @@ ggcyto(gs, aes(x = CD3, y = SSC)) + geom_hex(bins = 32) + geom_gate("TCells")
 
 A typical workflow for flow cytometry data analysis in Bioconductor flow packages include data transformation, normalization, filtering, manual gating, semi-automatic gating and automatic clustering if desired. Details can be found in flowWorkFlow.pdf or the vignettes of the flow cytometry packages.
 
-[ Back to top ]
+> 生物导体流包中流式细胞术数据分析的典型工作流包括数据转换、归一化、过滤、手动选通、半自动选通和自动聚类（如果需要）。详细信息可在flowWorkFlow中找到。pdf或流式细胞仪软件包的渐晕图。
 
 3Installation and Use
 Follow installation instructions to start using these packages. To install the flowCore package and all of its dependencies, evaluate the commands
@@ -95,7 +97,6 @@ To use the flowCore package, evaluate the command
 library("flowCore")
 This instruction is required once in each R session.
 
-[ Back to top ]
 
 4Exploring Package Content
 Packages have extensive help pages, and include vignettes highlighting common use cases. The help pages and vignettes are available from within R. After loading a package, use syntax like
@@ -110,7 +111,6 @@ to view vignettes (providing a more comprehensive introduction to package functi
 help.start()
 to open a web page containing comprehensive help resources.
 
-[ Back to top ]
 
 5Diverse Assays Resources
 The following provide a brief overview of packages useful for analysis of high-throughput assays. More comprehensive workflows can be found in documentation (available from package descriptions) and in Bioconductor publications.

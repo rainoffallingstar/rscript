@@ -1,0 +1,269 @@
+---
+title: "sequencingworkflow|翻译"
+author: "fallingstar"
+date: "2022-07-28"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Introduction to Bioconductor for Sequence Data
+> Sonali Arora1* and Martin Morgan2**
+
+## 1Abstract
+Bioconductor enables the analysis and comprehension of high- throughput genomic data. We have a vast number of packages that allow rigorous statistical analysis of large data while keeping technological artifacts in mind. Bioconductor helps users place their analytic results into biological context, with rich opportunities for visualization. Reproducibility is an important goal in Bioconductor analyses. Different types of analysis can be carried out using Bioconductor, for example
+
+> Bioconductor能够分析和理解高通量基因组数据。我们有大量的软件包，允许对大数据进行严格的统计分析，同时牢记技术工件。Bioconductor帮助用户将其分析结果置于生物环境中，提供了丰富的可视化机会。再现性是生物导体分析的一个重要目标。例如，可以使用生物导体进行不同类型的分析
+
+Sequencing : RNASeq, ChIPSeq, variants, copy number..
+Microarrays: expression, SNP, …
+Domain specific analysis : Flow cytometry, Proteomics ..
+For these analyses, one typically imports and works with diverse sequence-related file types, including fasta, fastq, BAM, gtf, bed, and wig files, among others. Bioconductor packages support import, common and advanced sequence manipulation operations such as trimming, transformation, and alignment including quality assessment.
+
+> 测序：RNASeq，ChIPSeq，变体，拷贝数。。
+微阵列：表达，单核苷酸多态性…
+领域特异性分析：流式细胞术、蛋白质组学。。
+对于这些分析，通常导入并使用不同的序列相关文件类型，包括fasta、fastq、BAM、gtf、bed和wig文件等。Bioconductor软件包支持导入、常见和高级序列操作，例如修剪、转换和对齐，包括质量评估。
+
+## 2Sequencing Resources
+
+Here is a illustrative description elaborating the different file types at various stages in a typical analysis, with the package names (in pink boxes) that one will use for each stage.
+
+
+The following packages illustrate the diversity of functionality available; all are in the release version of Bioconductor.
+
+> 下面是一个示例性描述，详细说明了典型分析中不同阶段的不同文件类型，以及每个阶段将使用的包名（在粉红色框中）。
+以下软件包说明了可用功能的多样性；所有这些都在Bioconductor的发布版本中。
+
+IRanges and GenomicRanges for range-based (e.g., chromosomal regions) calculation, data manipulation, and general-purpose data representation. Biostrings for DNA and amino acid sequence representation, alignment, pattern matching (e.g., primer removal), and data manipulation of large biological sequences or sets of sequences. ShortRead for working with FASTQ files of short reads and their quality scores.
+
+> IRanges和基因组范围用于基于范围（例如染色体区域）的计算、数据操作和通用数据表示。用于DNA和氨基酸序列表示、对齐、模式匹配（例如引物移除）和大型生物序列或序列集的数据操作的生物串。用于处理FASTQ文件的短读及其质量分数。
+
+Rsamtools and GenomicAlignments for aligned read (BAM file) I/O and data manipulation. rtracklayer for import and export of diverse data formats (e.g., BED, WIG, bigWig, GTF, GFF) and manipualtion of tracks on the UCSC genome browser.
+
+> RSAMTool和基因组比对用于对齐读取（BAM文件）输入/输出和数据操作。rtracklayer用于导入和导出各种数据格式（例如BED、WIG、bigWig、GTF、GFF）和UCSC基因组浏览器上的轨迹管理。
+
+BSgenome for accessing and manipulating curated whole-genome representations. GenomicFeatures for annotation of sequence features across common genomes, biomaRt for access to Biomart databases.
+
+SRAdb for querying and retrieving data from the Sequence Read Archive.
+
+> BSgenome用于访问和操作策划的全基因组表示。基因组特征用于注释常见基因组中的序列特征，biomaRt用于访问biomaRt数据库。
+SRAdb用于从序列读取存档中查询和检索数据。
+
+Bioconductor packages are organized by biocViews. Some of the entries under Sequencing and other terms, and representative packages, include:
+
+RNASeq, e.g., edgeR, DESeq2, edgeR, derfinder, and QuasR.
+
+ChIPSeq, e.g.,DiffBind, csaw, ChIPseeker, ChIPQC.
+
+SNPs and other variants, e.g., VariantAnnotation, VariantFiltering, h5vc.
+
+CopyNumberVariation e.g., DNAcopy, crlmm, fastseg.
+
+Microbiome and metagenome sequencing, e.g., metagenomeSeq, phyloseq, DirichletMultinomial.
+
+> Bioconductor封装由BioView组织。排序和其他术语下的一些条目以及代表性的文件包包括：
+RNASeq，例如edgeR、DESeq2、edgeR、derfinder和QuasR。
+ChIPSeq，例如DiffBind、csaw、ChipSeek、ChIPQC。
+单核苷酸多态性和其他变体，例如变异突变、变异过滤、h5vc。
+CopyNumberVariation，例如DNAcopy、crlmm、fastseg。
+微生物组和元基因组测序，例如，metagenomeSeq、phyloseq、Dirichlet多项式。
+
+## 3Ranges Infrastructure
+
+Many Bioconductor packages rely heavily on the IRanges / GenomicRanges infrastructure. Thus we will begin with a quick introduction to these and then cover different file types.
+
+The GenomicRanges package allows us to associate a range of chromosome coordinates with a sequence name (e.g., chromosome) and a strand. Such genomic ranges are very useful for describing both data (e.g., the coordinates of aligned reads, called ChIP peaks, SNPs, or copy number variants) and annotations (e.g., gene models, Roadmap Epigenomics regulatory elements, known clinically relevant variants from dbSNP). GRanges is an object representing a vector of genomic locations and associated annotations. Each element in the vector is comprised of a sequence name, a range, a strand, and optional metadata (e.g. score, GC content, etc.).
+
+> 基因组范围软件包允许我们将一系列染色体坐标与序列名称（例如染色体）和链相关联。这种基因组范围对于描述数据（例如，对齐读取的坐标，称为芯片峰值、SNP或拷贝数变体）和注释（例如，基因模型、路线图表观基因组调控元件、dbSNP中已知的临床相关变体）非常有用。GRanges是表示基因组位置和相关注释的载体的对象。向量中的每个元素由序列名、范围、链和可选元数据（例如分数、GC内容等）组成。
+
+library(GenomicRanges)
+GRanges(seqnames=Rle(c('chr1', 'chr2', 'chr3'), c(3, 3, 4)),
+      IRanges(1:10, width=5), strand='-',
+      score=101:110, GC = runif(10))
+      
+Genomic ranges can be created ‘by hand’, as above, but are often the result of importing data (e.g., via GenomicAlignments::readGAlignments()) or annotation (e.g., via GenomicFeatures::select() or rtracklayer::import() of BED, WIG, GTF, and other common file formats). Use help() to list the help pages in the GenomicRanges package, and vignettes() to view and access available vignettes.
+
+help(package="GenomicRanges")
+vignette(package="GenomicRanges")
+
+Some of the common operations on GRanges include findOverlaps(query, subject) and nearest(query, subject), which identify the ranges in query that overlap ranges in subject, or the range in subject nearest to `query. These operations are useful both in data analysis (e.g., counting overlaps between aligned reads and gene models in RNAseq) and comprehension (e.g., annotating genes near ChIP binding sites).
+
+## 4DNA /amino acid sequence from FASTA files
+Biostrings classes (e.g., DNAStringSet) are used to represent DNA or amino acid sequences. In the example below we will construct a DNAString and show some manipulations.
+
+library(Biostrings)
+d <- DNAString("TTGAAAA-CTC-N")
+length(d)  #no of letters in the DNAString
+## [1] 13
+
+We will download all Homo sapiens cDNA sequences from the FASTA file ‘Homo_sapiens.GRCh38.cdna.all.fa’ from Ensembl using AnnotationHub.
+
+library(AnnotationHub)
+ah <- AnnotationHub()
+This file is downloaded as a TwoBitFile
+
+ah2 <- query(ah, c("fasta", "homo sapiens", "Ensembl", "cdna"))
+dna <- ah2[["AH68262"]]
+dna
+## TwoBitFile object
+## resource: /home/biocbuild/.cache/R/AnnotationHub/148001d43c00f_75008
+
+The sequences in the file can be read in using getSeq() from the Biostrings package. The sequences are returned as a DNAStringSet object.
+
+getSeq(dna)
+## DNAStringSet object of length 187626:
+##           width seq                                                             names               
+##      [1]     12 GGGACAGGGGGC                                                    ENST00000632684.1
+##      [2]      9 CCTTCCTAC                                                       ENST00000434970.2
+##      [3]     13 ACTGGGGGATACG                                                   ENST00000448914.1
+##      [4]      8 GAAATAGT                                                        ENST00000415118.1
+##      [5]     12 GGGACAGGGGGC                                                    ENST00000631435.1
+##      ...    ... ...
+## [187622]   1370 GGCTGAGTCTGGGCCCCAGGACCCGCATGC...GAAGCTTCCCAAGATGCAGCCGGGAGGTGA ENST00000639790.1
+## [187623]    284 GGCGTCTACAAGAGACCTTCCTTCTCAGCT...TGAGTGATCAGCCCTAGATGACCACTGTTA ENST00000639660.1
+## [187624]    105 TGCATCACTCTGGCATTGACTTCCTGGATT...CTGTCCTTCTGTGGACCCCAGAAAGTTAAT ENST00000643577.1
+## [187625]    900 ATGGGATGTCACCAATCAATGGTCACAGAA...AGGGCACTGAGGAAGGAGAGGCTGATGTAA ENST00000646356.1
+## [187626]    930 ATGGGAGTCAACCAATCATGGGTCACAGAA...CACAGAGCACTGCAGAGGACGCTGTCTATG ENST00000645792.1
+
+BSgenome packages inside Bioconductor contain whole genome sequences as distributed by ENSEMBL, NCBI and others. In this next example we will load the whole genome sequence for Homo sapiens from UCSC’s hg19 build, and calculate the GC content across chromosome 14.
+
+library(BSgenome.Hsapiens.UCSC.hg19)
+
+chr14_range = GRanges("chr14", IRanges(1, seqlengths(Hsapiens)["chr14"]))
+chr14_dna <- getSeq(Hsapiens, chr14_range)
+letterFrequency(chr14_dna, "GC", as.prob=TRUE)
+##           G|C
+## [1,] 0.336276
+
+## 5Reads from FASTQ files
+
+ShortRead package from Bioconductor can be used for working with fastq files. Here we illustrate a quick example where one can read in multiple fasta files, collect some statistics and generate a report about the same.
+
+BiocParallel is another package from Bioconductor which parallelizes this task and speeds up the process.
+
+## 1. attach ShortRead and BiocParallel
+library(ShortRead)
+library(BiocParallel)
+
+## 2. create a vector of file paths
+fls <- dir("~/fastq", pattern="*fastq", full=TRUE)
+
+## 3. collect statistics
+stats0 <- qa(fls)
+
+## 4. generate and browse the report
+if (interactive())
+    browseURL(report(stats0))
+    
+Two useful functions in ShortRead are trimTails() for processing FASTQ files, and FastqStreamer() for iterating through FASTQ files in manageable chunks (e.g., 1,000,000 records at a time).
+
+## 6Aligned Reads from BAM files
+
+The GenomicAlignments package is used to input reads aligned to a reference genome.
+
+In this next example, we will read in a BAM file and specifically read in reads supporting an apparent exon splice junction spanning position 19653773 of chromosome 14.
+
+The package RNAseqData.HNRNPC.bam.chr14_BAMFILES contains 8 BAM files. We will use only the first BAM file. We will load the software packages and the data package, construct a GRanges with our region of interest, and use summarizeJunctions() to find reads in our region of interest.
+
+## 1. load software packages
+library(GenomicRanges)
+library(GenomicAlignments)
+
+## 2. load sample data
+library('RNAseqData.HNRNPC.bam.chr14')
+bf <- BamFile(RNAseqData.HNRNPC.bam.chr14_BAMFILES[[1]], asMates=TRUE)
+
+## 3. define our 'region of interest'
+roi <- GRanges("chr14", IRanges(19653773, width=1)) 
+
+## 4. alignments, junctions, overlapping our roi
+
+paln <- readGAlignmentsList(bf)
+j <- summarizeJunctions(paln, with.revmap=TRUE)
+j_overlap <- j[j %over% roi]
+
+## 5. supporting reads
+paln[j_overlap$revmap[[1]]]
+## GAlignmentsList object of length 8:
+## [[1]]
+## GAlignments object with 2 alignments and 0 metadata columns:
+##       seqnames strand       cigar    qwidth     start       end     width     njunc
+##          <Rle>  <Rle> <character> <integer> <integer> <integer> <integer> <integer>
+##   [1]    chr14      -   66M120N6M        72  19653707  19653898       192         1
+##   [2]    chr14      +  7M1270N65M        72  19652348  19653689      1342         1
+##   -------
+##   seqinfo: 93 sequences from an unspecified genome
+## 
+## [[2]]
+## GAlignments object with 2 alignments and 0 metadata columns:
+##       seqnames strand       cigar    qwidth     start       end     width     njunc
+##          <Rle>  <Rle> <character> <integer> <integer> <integer> <integer> <integer>
+##   [1]    chr14      -   66M120N6M        72  19653707  19653898       192         1
+##   [2]    chr14      +         72M        72  19653686  19653757        72         0
+##   -------
+##   seqinfo: 93 sequences from an unspecified genome
+## 
+## [[3]]
+## GAlignments object with 2 alignments and 0 metadata columns:
+##       seqnames strand       cigar    qwidth     start       end     width     njunc
+##          <Rle>  <Rle> <character> <integer> <integer> <integer> <integer> <integer>
+##   [1]    chr14      +         72M        72  19653675  19653746        72         0
+##   [2]    chr14      -   65M120N7M        72  19653708  19653899       192         1
+##   -------
+##   seqinfo: 93 sequences from an unspecified genome
+## 
+## ...
+## <5 more elements>
+
+For a detailed tutorial on working with BAM files do check out this detailed Overlap Encodings vignette of GenomicAlignments.
+
+## 7Called Variants from VCF files
+
+VCF (Variant Call Files) describe SNP and other variants. The files contain meta-information lines, a header line with column names, and then (many!) data lines, each with information about a position in the genome, and optional genotype information on samples for each position.
+
+Data are parsed into a VCF object with readVcf() from VariantAnnoation
+
+library(VariantAnnotation)
+fl <- system.file("extdata", "chr22.vcf.gz", package="VariantAnnotation")
+vcf <- readVcf(fl, "hg19")
+
+An excellent workflow on working with Variants can be found here. In particular it is possible to read in specific components of the VCF file (e.g., readInfo(), readGeno()) and parts of the VCF at specific genomic locations (using GRanges and the param = ScanVcfParam() argument to input functions).
+
+## 8Genome Annotations from BED, WIG, GTF etc files
+
+rtracklayer import and export functions can read in many common file types, e.g., BED, WIG, GTF, …, in addition to querying and navigating the UCSC genome browser.
+
+rtracklayer contains a ‘test’ BED file which we will read in here
+
+library(rtracklayer)
+test_path <- system.file("tests", package = "rtracklayer")
+test_bed <- file.path(test_path, "test.bed")
+  
+test <- import(test_bed, format = "bed")
+test
+## UCSC track 'ItemRGBDemo'
+## UCSCData object with 5 ranges and 5 metadata columns:
+##       seqnames              ranges strand |        name     score     itemRgb               thick
+##          <Rle>           <IRanges>  <Rle> | <character> <numeric> <character>           <IRanges>
+##   [1]     chr7 127471197-127472363      + |        Pos1         0     #FF0000 127471197-127472363
+##   [2]     chr7 127472364-127473530      + |        Pos2         2     #FF0000 127472364-127473530
+##   [3]     chr7 127473531-127474697      - |        Neg1         0     #FF0000 127473531-127474697
+##   [4]     chr9 127474698-127475864      + |        Pos3         5     #FF0000 127474698-127475864
+##   [5]     chr9 127475865-127477031      - |        Neg2         5     #0000FF 127475865-127477031
+##                        blocks
+##                 <IRangesList>
+##   [1] 1-300,501-700,1068-1167
+##   [2]          1-250,668-1167
+##   [3]                  1-1167
+##   [4]                  1-1167
+##   [5]                  1-1167
+##   -------
+##   seqinfo: 2 sequences from an unspecified genome; no seqlengths
+
+The file is returned to the user as a GRanges instance. A more detailed tutorial can be found here
+
+AnnotationHub also contains a variety of genomic annotation files (eg BED, GTF, BigWig) which use import() from rtracklayer behind the scenes. For a detailed tutorial the user is referred to Annotation workflow and AnnotationHub HOW TO vignette
+

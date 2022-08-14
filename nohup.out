@@ -1,0 +1,35 @@
+=> Database and media directory: /home/ubuntu/.local/share/label-studio
+=> Static URL is set to: /static/
+Starting new HTTPS connection (1): pypi.org:443
+https://pypi.org:443 "GET /pypi/label-studio/json HTTP/1.1" 200 50436
+utf-8  confidence = 0.99
+SHIFT_JIS Japanese confidence = 0.01
+EUC-JP Japanese confidence = 0.01
+GB2312 Chinese confidence = 0.01
+EUC-KR Korean confidence = 0.01
+CP949 Korean confidence = 0.01
+Big5 Chinese confidence = 0.01
+EUC-TW Taiwan confidence = 0.01
+windows-1251 Russian confidence = 0.01
+KOI8-R Russian confidence = 0.01
+ISO-8859-5 Russian confidence = 0.01
+MacCyrillic Russian confidence = 0.0
+IBM866 Russian confidence = 0.0
+IBM855 Russian confidence = 0.01
+ISO-8859-7 Greek confidence = 0.01
+windows-1253 Greek confidence = 0.01
+ISO-8859-5 Bulgairan confidence = 0.01
+windows-1251 Bulgarian confidence = 0.01
+TIS-620 Thai confidence = 0.0
+ISO-8859-9 Turkish confidence = 0.5558446454360745
+windows-1255 Hebrew confidence = 0.0
+windows-1255 Hebrew confidence = 0.0
+windows-1255 Hebrew confidence = 0.0
+utf-8  confidence = 0.99
+SHIFT_JIS Japanese confidence = 0.01
+EUC-JP Japanese confidence = 0.01
+GB2312 Chinese confidence = 0.01
+EUC-KR Korean confidence = 0.01
+CP949 Korean confidence = 0.01
+Big5 Chinese confidence = 0.01
+EUC-TW Taiwan confidence = 0.01

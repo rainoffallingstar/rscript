@@ -1,0 +1,1847 @@
+---
+title: "TCGAworkflow|翻译"
+author: "fallingstar"
+date: "2022-07-25"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# TCGA Workflow: Analyze cancer genomics and epigenomics data using Bioconductor packages
+
+> Tiago Chedraoui Silva1*, Antonio Colaprico2,3**, Catharina Olsen2,3***, Fulvio D'Angelo4,5, Gianluca Bontempi3, Michele Ceccarelli6,7 and Houtan Noushmehr1,8
+>
+> 2022-01-07
+
+# Environment
+
+**R version**: R Under development (unstable) (2022-01-05 r81451)
+
+**Bioconductor version**: 3.15
+
+**Package**: 1.19.1
+
+# About
+
+This workflow is based on the article: [TCGA Workflow: Analyze cancer genomics and epigenomics data using Bioconductor packages](https://f1000research.com/articles/5-1542/v2) (Silva et al. 2016). Due to time and space limitations, we downloaded only a subset of the data, for a real analysis please use all data available. The data used in the examples are available in the package [*TCGAWorkflowData*](https://bioconductor.org/packages/3.15/TCGAWorkflowData). \> 由于时间与空间的限制，我们在本workflow中仅使用了一部分原始数据作为分析示例。
+
+## Installation
+
+To be able to execute all the steps of this workflow please install it with the following code:
+
+```{r install_packages, warning=FALSE}
+if (!"BiocManager" %in% rownames(installed.packages()))
+  install.packages("BiocManager")
+BiocManager::install("TCGAWorkflow")
+BiocManager::install("TCGAWorkflowData")
+```
+
+## Loading packages
+
+At the beginning of each section, the packages required to execute the code will be loaded. However, the following packages are required for all sections.
+
+-   TCGAWorkflowData: this package contains the data necessary to execute each of the analysis steps. This is a subset of the downloaded to make the example faster. For a real analysis, please use all the data available.
+-   DT: we will use it to visualize the results
+
+```{r load_packages, warning=FALSE}
+library(TCGAWorkflowData)
+library(DT)
+```
+
+# Abstract 摘要
+
+Biotechnological advances in sequencing have led to an explosion of publicly available data via large international consortia such as [The Cancer Genome Atlas (TCGA)](http://cancergenome.nih.gov/), [The Encyclopedia of DNA Elements (ENCODE)](http://www.encodeproject.org/), and [The NIH Roadmap Epigenomics Mapping Consortium (Roadmap)](http://www.roadmapepigenomics.org/). These projects have provided unprecedented opportunities to interrogate the epigenome of cultured cancer cell lines as well as normal and tumor tissues with high genomic resolution. The [Bioconductor](http://www.bioconductor.org/) project offers more than 1,000 open-source software and statistical packages to analyze high-throughput genomic data. However, most packages are designed for specific data types (e.g. expression, epigenetics, genomics) and there is no one comprehensive tool that provides a complete integrative analysis of the resources and data provided by all three public projects. A need to create an integration of these different analyses was recently proposed. In this workflow, we provide a series of biologically focused integrative analyses of different molecular data. We describe how to download, process and prepare TCGA data and by harnessing several key Bioconductor packages, we describe how to extract biologically meaningful genomic and epigenomic data. Using Roadmap and ENCODE data, we provide a work plan to identify biologically relevant functional epigenomic elements associated with cancer.
+
+> 测序方面的生物技术进步导致通过大型国际数据（如1.癌症基因组图谱（TCGA）2.DNA元素百科全书（ENCODE）3.美国国立卫生研究院路线图表观基因组图谱联盟（路线图）公开获得的数据激增. 这些项目为以高基因组分辨率研究培养的癌细胞系以及正常组织和肿瘤组织的表观基因组提供了前所未有的机会。bioconductor项目提供了1000多个开源软件和统计软件包来分析高通量基因组数据。然而，大多数软件包都是针对特定数据类型（例如表达、表观遗传学、基因组学）设计的，没有一个综合工具可以对所有三个公共项目提供的资源和数据进行完整的综合分析。最近有人提出需要将这些不同的分析进行整合。在这个工作流程中，我们提供了一系列以生物学为重点的不同分子数据的综合分析。我们描述了如何下载、处理和准备TCGA数据，并通过利用几个关键的biocondutor包，描述了如何提取具有生物意义的基因组和表观基因组数据。利用roadmap和ENCODE数据，我们提供了一个workflow，以确定与癌症相关的生物相关功能表观基因元件。
+
+To illustrate our workflow, we analyzed two types of brain tumors: low-grade glioma (LGG) versus high-grade glioma (glioblastoma multiform or GBM).
+
+All the package landing pages used in this workflow can be found through the [biocViews interface](http://www.bioconductor.org/packages/release/BiocViews.html#___Software).
+
+**Keywords:** Epigenomics, Genomics, Cancer, non-coding, TCGA, ENCODE, Roadmap, Bioinformatics.
+
+# Introduction
+
+Cancer is a complex genetic disease spanning multiple molecular events such as point mutations, structural variations, translocations and activation of epigenetic and transcriptional signatures and networks. The effects of these events take place at different spatial and temporal scales with interlayer communications and feedback mechanisms creating a highly complex dynamic system. To gain insight into the biology of tumors most of the research in cancer genomics is aimed at the integration of the observations at multiple molecular scales and the analysis of their interplay. Even if many tumors share similar recurrent genomic events, their relationships with the observed phenotype are often not understood. For example, although we know that the majority of the most aggressive form of brain tumors such as glioma harbor the mutation of a single gene (IDH), the mechanistic explanation of the activation of its characteristic epigenetic and transcriptional signatures are still far to be well characterized. Moreover, network-based strategies have recently emerged as an effective framework for the discovery functional disease drivers that act as main regulators of cancer phenotypes. Here we describe a comprehensive workflow that integrates many Bioconductor packages in order to analyze and integrate the multiplicity of molecular observation layers in large-scale cancer dataset.
+
+> 癌症是一种复杂的遗传疾病，跨越多个分子事件，如点突变、结构变异、易位和表观遗传和转录特征及网络的激活。这些事件的影响在不同的时空尺度上发生，层间通信和反馈机制创造了一个高度复杂的动态系统。为了深入了解肿瘤生物学，癌症基因组学的大多数研究旨在整合多分子尺度的观察结果并分析其相互作用。即使许多肿瘤具有相似的复发性基因组事件，它们与观察到的表型之间的关系也往往不清楚。例如，虽然我们知道大多数最具侵袭性的脑肿瘤，如胶质瘤，都存在单基因突变（IDH），但对其特征性表观遗传和转录特征激活的机制解释仍远未得到很好的描述。此外，基于网络的策略最近已成为发现功能性疾病驱动因素的有效框架，这些驱动因素是癌症表型的主要调节因素。在这里，我们描述了一个综合工作流程，该流程集成了许多生物导体包，以便在大规模癌症数据集中分析和集成分子观察层的多样性。
+
+Indeed, recent technological developments allowed the deposition of large amounts of genomic and epigenomic data, such as gene expression, DNA methylation, and genomic localization of transcription factors, into freely available public international consortia like The Cancer Genome Atlas ([TCGA](http://cancergenome.nih.gov/)), The Encyclopedia of DNA Elements ([ENCODE](http://www.encodeproject.org/)), and The NIH Roadmap Epigenomics Mapping Consortium ([Roadmap](http://www.roadmapepigenomics.org/)) (Hawkins, Hon, and Ren 2010). An overview of the three consortia is described below:
+
+-   **The Cancer Genome Atlas (TCGA):** The TCGA consortium, which is a National Institute of Health (NIH) initiative, makes publicly available molecular and clinical information for more than 30 types of human cancers including exome (variant analysis), single nucleotide polymorphism (SNP), DNA methylation, transcriptome (mRNA), microRNA (miRNA) and proteome. Sample types available at TCGA are: primary solid tumors, recurrent solid tumors, blood derived normal and tumor, metastatic, and solid tissue normal (Weinstein et al. 2013).
+
+> TCGA联盟是美国国家卫生研究院（NIH）的一项倡议，它公开了30多种人类癌症的分子和临床信息，包括外显子组（变体分析）、单核苷酸多态性（SNP）、DNA甲基化、转录组（mRNA）、微RNA（miRNA）和蛋白质组。TCGA可用的样本类型包括：原发性实体瘤、复发性实体瘤、血源性正常和肿瘤、转移性和实体组织正常
+
+-   **The Encyclopedia of DNA Elements (ENCODE):** Found in 2003 by the National Human Genome Research Institute (NHGRI), the project aims to build a comprehensive list of functional elements that have an active role in the genome, including regulatory elements that govern gene expression. Biosamples include immortalized cell lines, tissues, primary cells and stem cells (Consortium and others 2011).
+
+> 该项目由美国国家人类基因组研究所（NHGRI）于2003年成立，旨在建立一个在基因组中具有积极作用的功能元件的全面列表，包括控制基因表达的调控元件。生物样本包括永生化细胞系、组织、原代细胞和干细胞
+
+-   **The NIH Roadmap Epigenomics Mapping Consortium:** This was launched with the goal of producing a public resource of human epigenomic data in order to analyze biology and disease-oriented research. Roadmap maps DNA methylation, histone modifications, chromatin accessibility, and small RNA transcripts in stem cells and primary ex vivo tissues (Fingerman et al. 2011; Bernstein et al. 2010).
+
+> 这项研究的目的是开发人类表观基因组数据的公共资源，以分析生物学和疾病导向的研究。路线图绘制了干细胞和原代离体组织中的DNA甲基化、组蛋白修饰、染色质可及性和小RNA转录物
+
+Briefly, these three consortia provide large-scale epigenomic data onto a variety of microarrays and next-generation sequencing (NGS) platforms. Each consortium encompasses specific types of biological information on a specific type of tissue or cell and when analyzed together, it provides an invaluable opportunity for research laboratories to better understand the developmental progression of normal cells to cancer state at the molecular level and importantly, correlate these phenotypes with tissue of origins.
+
+> 简而言之，这三个联盟在各种微阵列和下一代测序（NGS）平台上提供了大规模表观基因组数据。每个联合体包含关于特定类型组织或细胞的特定类型的生物信息，当一起分析时，它为研究实验室提供了一个宝贵的机会，以更好地了解正常细胞在分子水平上向癌症状态的发展过程，重要的是，将这些表型与起源组织相关联。
+
+Although there exists a wealth of possibilities (Kannan et al. 2015) in accessing cancer associated data, [Bioconductor](http://www.bioconductor.org/) represents the most comprehensive set of open source, updated and integrated professional tools for the statistical analysis of large-scale genomic data. Thus, we propose our workflow within Bioconductor to describe how to download, process, analyze and integrate cancer data to understand specific cancer-related specific questions. However, there is no tool that solves the issue of integration in a comprehensive sequence and mutation information, epigenomic state and gene expression within the context of gene regulatory networks to identify oncogenic drivers and characterize altered pathways during cancer progression. Therefore, our workflow presents several [Bioconductor](http://www.bioconductor.org/) packages to work with genomic and epigenomics data.
+
+> 尽管在获取癌症相关数据方面存在大量可能性,bioconductor代表了一套最全面的开源、更新和集成的专业工具，用于大规模基因组数据的统计分析。因此，我们在Bioconductor中提出了我们的工作流程，以描述如何下载、处理、分析和整合癌症数据，以了解与癌症相关的特定问题。然而，目前还没有工具能够解决在基因调控网络背景下整合全面序列和突变信息、表观基因组状态和基因表达的问题，以识别致癌驱动因素并表征癌症进展过程中的改变途径。因此，我们的工作流程提出了几种bioconductor包来处理基因组和表观基因组数据包。
+
+# Methods 方法
+
+## Access to the data 获取数据
+
+TCGA data is accessible via the NCI Genomic Data Commons (GDC) [data portal](https://gdc-portal.nci.nih.gov/), [GDC Legacy Archive](https://gdc-portal.nci.nih.gov/legacy-archive/search/f) and the [Broad Institute's GDAC Firehose](https://www.bioconductor.org/packages/release/workflows/vignettes/TCGAWorkflow/inst/doc/gdac.broadinstitute.org). The GDC Data Portal provides access to the subset of TCGA data that has been harmonized against GRCh38 (hg38) using GDC Bioinformatics Pipelines which provides methods to the standardization of biospecimen and clinical data, the re-alignment of DNA and RNA sequence data against a common reference genome build GRCh38, and the generation of derived data. Whereas the GDC Legacy Archive provides access to an unmodified copy of data that was previously stored in [CGHub](https://cghub.ucsc.edu/)(Wilks et al. 2014) and in the TCGA Data Portal hosted by the TCGA Data Coordinating Center (DCC), in which uses as references GRCh37 (hg19) and GRCh36 (hg18).
+
+> TCGA数据可通过NCI基因组数据共享（GDC）[GDC存档]和[Broad Institute's GDAC Firehose]访问获取， GDC数据门户提供了对TCGA数据子集的访问，该子集已使用GDC生物信息学管道与GRCh38（hg38）进行了协调一致化，该管道提供了生物样本和临床数据标准化、DNA和RNA序列数据与通用参考基因组构建GRCh38重新比对以及衍生数据生成的方法。GDC遗留归档提供了对之前存储在[CGHub]中的未修改数据副本的访问和TCGA数据协调中心（DCC）托管的TCGA数据地址，该数据库的数据使用GRCh37（hg19）和GRCh36（hg18）作为参考。
+
+The previously stored data in CGHub, TCGA Data Portal and Broad Institute's GDAC Firehose, were provided as different levels or tiers that were defined in terms of a specific combination of both processing level (raw, normalized, integrated) and access level (controlled or open access). Level 1 indicated raw and controlled data, level 2 indicated processed and controlled data, level 3 indicated Segmented or Interpreted Data and open access and level 4 indicated region of interest and open access data. While the TCGA data portal provided level 1 to 3 data, Firehose only provides level 3 and 4. An explanation of the different levels can be found at [TCGA Wiki](https://wiki.nci.nih.gov/display/TCGA/Data+level). However, the GDC data portal no longer uses this based classification model in levels. Instead, a new data model was created, its documentation can be found in [GDC documentation](https://gdc.nci.nih.gov/developers/gdc-data-model/gdc-data-model-components). In this new model, data can be open or controlled access. While the GDC open access data does not require authentication or authorization to access it and generally includes high-level genomic data that is not individually identifiable, as well as most clinical and all biospecimen data elements, the GDC controlled access data requires dbGaP authorization and eRA Commons authentication and generally includes individually identifiable data such as low-level genomic sequencing data, germline variants, SNP6 genotype data, and certain clinical data elements. The process to obtain access to controlled data is found in [GDC web site](https://gdc.nci.nih.gov/access-data/obtaining-access-controlled-data).
+
+> 以前存储在CGHub、TCGA数据门户和Broad Institute的GDAC Firehose中的数据以不同的级别或层次提供，这些级别或层次根据处理级别（原始、规范化、集成）和访问级别（受控或开放访问）的特定组合来定义。第1级表示原始和受控数据，第2级表示处理和受控数据，第3级表示分段或解释数据和开放存取，第4级表示感兴趣区域和开放存取数据。虽然TCGA数据门户提供了1至3级数据，但Firehose仅提供了3级和4级数据。然而，GDC数据门户不再在级别上使用基于此的分类模型。相反，创建了一个新的数据模型.在这个新模型中，数据可以是开放的或受控的访问。虽然GDC开放获取数据不需要身份验证或授权即可访问，但通常包括无法单独识别的高级基因组数据，以及大多数临床和所有生物样本数据元素，GDC控制的访问数据需要dbGaP授权和eRA Commons认证，通常包括个人识别数据，如低水平基因组测序数据、种系变体、SNP6基因型数据和某些临床数据元素。
+
+Finally, the data provided by [GDC data portal](https://gdc-portal.nci.nih.gov/) and [GDC Legacy Archive](https://gdc-portal.nci.nih.gov/legacy-archive/search/f) can be accessed using Bioconductor package [TCGAbiolinks](http://bioconductor.org/packages/TCGAbiolinks/), while the data provided by Firehose can be accessed by Bioconductor package [RTCGAToolbox](http://bioconductor.org/packages/RTCGAToolbox/).
+
+> 最后，[GDC data portal]和[GDC Legacy Archive]提供的数据可以使用Bioconductor包[TCGAbiolonks]访问，而Firehose提供的数据可以通过Bioconductor包[RTCGAToolbox]访问.
+
+The next steps describe how one could use [TCGAbiolinks](http://bioconductor.org/packages/TCGAbiolinks/) & [RTCGAToolbox](http://bioconductor.org/packages/RTCGAToolbox/) to download clinical, genomics, transcriptomics, epigenomics data, as well as subtype information and GISTIC results (i.e., identified genes targeted by somatic copy-number alterations (SCNAs) that drive cancer growth). All the data used in this workflow has as reference the Genome Reference Consortium human genome (build 37 - hg19).
+
+> 下一步描述如何使用[tcgabiolinks]&[RTCGatoolbox]下载临床、基因组学、转录组学、表观基因组数据，以及亚型信息和GISTIC结果（即，通过导致癌症生长的体细胞拷贝数改变（SCNAs）确定的靶基因）。本工作流程中使用的所有数据都人类基因组（Build 37-HG19）为参考。 注：GISTIC结果：检测一组样品中显着扩增或缺失的基因组区域
+
+### Downloading data from TCGA data portal 数据下载
+
+The Bioconductor package [TCGAbiolinks](http://bioconductor.org/packages/TCGAbiolinks/) (Colaprico et al. 2016) has three main functions *GDCquery*, *GDCdownload* and *GDCprepare* that should sequentially be used to respectively search, download and load the data as an R object.
+
+*GDCquery* uses [GDC API](https://gdc.cancer.gov/developers/gdc-application-programming-interface-api) to search the data for a given project and data category and filters the results by samples, sample type, file type and others features if requested by the user. This function returns an object with a summary table with the results found (samples, files and other useful information) and the arguments used in the query. The most important *GDCquery* arguments are *project* which receives a GDC project (TCGA-USC, TCGA-LGG, TARGET-AML, etc), *data.category* which receives a data category (Transcriptome Profiling, Copy Number Variation, DNA methylation, Gene expression, etc), *data.type* which receives a data type (Gene expression quantification, Isoform Expression Quantification, miRNA Expression Quantification, Copy Number Segment, Masked Copy Number Segment, etc), *workflow.type*, which receives a GDC workflow type (HTSeq - Counts, HTSeq - FPKM-UQ, HTSeq - FPKM), *legacy*, which selects to use the legacy database or the harmonized database, *file.type*, which receives a file type for the searches in the legacy database (hg18.seg, hg19.seg, nocnv\_,hg18.seg, nocnv_hg19.seg, rsem.genes.results, rsem.genes.normalized_results, etc) and *platform*, which receives a platform for the searches in the legacy database (HumanMethylation27, Genome_Wide_SNP_6, IlluminaHiSeq_RNASeqV2, etc). A complete list of possible entries for arguments can be found in the [TCGAbiolinks vignette](https://www.bioconductor.org/packages/3.3/bioc/vignettes/TCGAbiolinks/inst/doc/tcgaBiolinks.html#harmonized-data-1). Listing 1 shows an example of this function.
+
+After the search step, the user will be able to download the data using the *GDCdownload* function which can use either the GDC API to download the samples, or the [gdc client tools](https://gdc.cancer.gov/access-data/gdc-data-transfer-tool). The downloaded data will be saved in a directory with the project name and a sub-folder with the data.category, for example "TCGA-GBM/DNA_methylation".
+
+Finally, *GDCprepare* transforms the downloaded data into a [summarizedExperiment](http://bioconductor.org/packages/SummarizedExperiment/) object (Huber et al. 2015) or a data frame. If *SummarizedExperiment* is set to TRUE, TCGAbiolinks will add to the object sub-type information, which was defined by The Cancer Genome Atlas (TCGA) Research Network reports (the full list of papers can be seen in [TCGAquery_subtype section](http://bioconductor.org/packages/devel/bioc/vignettes/TCGAbiolinks/inst/doc/tcgaBiolinks.html#tcgaquery_subtype-working-with-molecular-subtypes-data.) in TCGAbiolinks vignette), and clinical information. Listing 1 shows how to use these functions to download DNA methylation and gene expression data from the GDC legacy database and 2 shows how to download copy number variation from harmonized data portal. Other examples, that access the harmonized data can be found in the [TCGAbiolinks vignette](https://www.bioconductor.org/packages/3.3/bioc/vignettes/TCGAbiolinks/inst/doc/tcgaBiolinks.html).
+
+    library(TCGAbiolinks)
+    # Obs: The data in the legacy database has been aligned to hg19
+    query.met.gbm <- GDCquery(
+      project = "TCGA-GBM", 
+      legacy = TRUE,
+      data.category = "DNA methylation",
+      platform = "Illumina Human Methylation 450", 
+      barcode = c("TCGA-76-4926-01B-01D-1481-05", "TCGA-28-5211-01C-11D-1844-05")
+    )
+    GDCdownload(query.met.gbm)
+
+    met.gbm.450 <- GDCprepare(
+      query = query.met.gbm,
+      save = TRUE, 
+      save.filename = "gbmDNAmet450k.rda",
+      summarizedExperiment = TRUE
+    )
+
+    query.met.lgg <- GDCquery(
+      project = "TCGA-LGG", 
+      legacy = TRUE,
+      data.category = "DNA methylation",
+      platform = "Illumina Human Methylation 450",
+      barcode = c("TCGA-HT-7879-01A-11D-2399-05", "TCGA-HT-8113-01A-11D-2399-05")
+    )
+    GDCdownload(query.met.lgg)
+    met.lgg.450 <- GDCprepare(
+      query = query.met.lgg,
+      save = TRUE, 
+      save.filename = "lggDNAmet450k.rda",
+      summarizedExperiment = TRUE
+    )
+
+    met.lgg.450$days_to_death <- NA
+    met.lgg.450$year_of_death <- NA
+    met.gbm.lgg <- SummarizedExperiment::cbind(met.lgg.450, met.gbm.450)
+
+
+    query.exp.lgg <- GDCquery(
+      project = "TCGA-LGG", 
+      legacy = TRUE,
+      data.category = "Gene expression",
+      data.type = "Gene expression quantification",
+      platform = "Illumina HiSeq", 
+      file.type = "results",
+      sample.type = "Primary solid Tumor"
+    )
+    GDCdownload(query.exp.lgg)
+    exp.lgg <- GDCprepare(query = query.exp.lgg, save = TRUE, save.filename = "lggExp.rda")
+
+    query.exp.gbm <- GDCquery(
+      project = "TCGA-GBM", 
+      legacy = TRUE,
+      data.category = "Gene expression",
+      data.type = "Gene expression quantification",
+      platform = "Illumina HiSeq", 
+      file.type = "results",
+      sample.type = "Primary solid Tumor"
+    )
+    GDCdownload(query.exp.gbm)
+    exp.gbm <- GDCprepare(query = query.exp.gbm, save = TRUE, save.filename = "gbmExp.rda")
+    exp.gbm.lgg <- SummarizedExperiment::cbind(exp.lgg, exp.gbm)
+
+    #-----------------------------------------------------------------------------
+    #                   Data.category: Copy number variation aligned to hg38
+    #-----------------------------------------------------------------------------
+    query <- GDCquery(
+      project = "TCGA-ACC",
+      data.category = "Copy Number Variation",
+      data.type = "Copy Number Segment",
+      barcode = c( "TCGA-OR-A5KU-01A-11D-A29H-01", "TCGA-OR-A5JK-01A-11D-A29H-01")\
+    )
+    GDCdownload(query)
+    data <- GDCprepare(query)
+
+    query <- GDCquery(
+      project = "TCGA-ACC",
+      data.category = "Copy Number Variation",
+      data.type = "Masked Copy Number Segment",
+      sample.type = c("Primary solid Tumor")
+    ) # see the barcodes with getResults(query)$cases
+    GDCdownload(query)
+    data <- GDCprepare(query)
+
+If a [SummarizedExperiment object](http://www.nature.com/nmeth/journal/v12/n2/fig_tab/nmeth.3252_F2.html) was chosen, the data can be accessed with three different accessors: *assay* for the data information, *rowRanges* to gets the range of values in each row and *colData* to get the sample information (patient, batch, sample type, etc) (Huber et al. 2015; H. J. Morgan M Obenchain V and H., n.d.). An example is shown in listing below.
+
+> *assay*对于数据信息，*rowRanges*获取每行中的值范围，*colData*获取样本信息（患者、批次、样本类型等）
+
+    library(SummarizedExperiment)
+
+    # Load object from TCGAWorkflowData package
+    # THis object will be created in the further sections,
+    data(GBMIllumina_HiSeq) 
+
+    # get expression matrix
+    data <- assay(gbm.exp)
+    datatable(
+      data = data[1:10,], 
+      options = list(scrollX = TRUE, keys = TRUE, pageLength = 5), 
+      rownames = TRUE
+    )
+
+    # get genes information
+    genes.info <- rowRanges(gbm.exp)
+    genes.info
+
+    # get sample information
+    sample.info <- colData(gbm.exp)
+    datatable(
+      data = as.data.frame(sample.info), 
+      options = list(scrollX = TRUE, keys = TRUE, pageLength = 5), 
+      rownames = FALSE
+    )
+
+The clinical data can be obtained using TCGAbiolinks through two methods. The first one will download only the indexed GDC clinical data which includes diagnoses (vital status, days to death, age at diagnosis, days to last follow up, days to recurrence), treatments (days to treatment, treatment id, therapeutic agents, treatment intent type), demographic (gender, race, ethnicity) and exposures (cigarettes per day, weight, height, alcohol history) information. This indexed clinical data can be obtained using the function *GDCquery_clinical* which can be used as described in listing below. This function has two arguments *project* ("TCGA-GBM","TARGET-AML",etc) and *type* ("Clinical" or "Biospecimen"). The second method will download the XML files with all clinical data for the patient and retrieve the desired information from it. This will give access to all clinical data available which includes patient (tumor tissue site, histological type, gender, vital status, days to birth, days to last follow up, etc), drug (days to drug therapy start, days to drug therapy end, therapy types, drug name), radiation (days to radiation therapy start, days to radiation therapy end, radiation type, radiation dosage ), new tumor event (days to new tumor event after initial treatment, new neoplasm event type, additional pharmaceutical therapy), follow up (primary therapy outcome success, follow up treatment success, vital status, days to last follow up, date of form completion), stage event (pathologic stage), admin (batch number, project code, disease code, Biospecimen Core Resource).
+
+> 使用TCGAbiolinks可以通过两种方法获得临床数据。第一个将只下载索引的GDC临床数据，其中包括诊断（生命状态、死亡天数、诊断年龄、最后一次随访天数、复发天数）、治疗（治疗天数、治疗id、治疗药物、治疗意向类型）、人口统计（性别、种族、种族）和暴露（每天吸烟、体重、身高、饮酒史）信息。该索引临床数据可以使用函数*GDCquery_clinical*获得，该函数可按以下列表所述使用。该函数有两个参数*项目*（"TCGA-GBM"、"TARGET-AML"等）和*类型*（"临床"或"生物样本"）。第二种方法将下载包含患者所有临床数据的XML文件，并从中检索所需信息。这将允许访问所有可用的临床数据，包括患者（肿瘤组织部位、组织学类型、性别、生命状态、出生天数、最后一次随访天数等）、药物（药物治疗开始的天数、药物治疗结束的天数、治疗类型、药物名称）、放射治疗（放射治疗开始的天数、放射治疗结束的天数、放射类型、放射剂量），新肿瘤事件（初始治疗后到新肿瘤事件的天数、新肿瘤事件类型、额外药物治疗）、随访（主要治疗结果成功、随访治疗成功、生命状态、最后一次随访的天数、表格完成日期）、阶段事件（病理阶段）、管理员（批号、项目代码、疾病代码、生物样本核心资源）。
+
+    # get indexed clinical patient data for GBM samples
+    gbm_clin <- GDCquery_clinic(project = "TCGA-GBM", type = "Clinical")
+
+    # get indexed clinical patient data for LGG samples
+    lgg_clin <- GDCquery_clinic(project = "TCGA-LGG", type = "Clinical")
+
+    # Bind the results, as the columns might not be the same,
+    # we will will plyr rbind.fill, to have all columns from both files
+    clinical <- plyr::rbind.fill(gbm_clin,lgg_clin)
+
+    datatable(clinical[1:10,], options = list(scrollX = TRUE, keys = TRUE), rownames = FALSE)
+
+    # Fetch clinical data directly from the clinical XML files.
+    # if barcode is not set, it will consider all samples.
+    # We only set it to make the example faster
+    query <- GDCquery(
+      project = "TCGA-GBM",
+      file.type = "xml",
+      data.category = "Clinical",
+      barcode = c("TCGA-08-0516","TCGA-02-0317")
+    ) 
+    GDCdownload(query)
+    clinical <- GDCprepare_clinic(query, clinical.info = "patient")
+
+    datatable(clinical, options = list(scrollX = TRUE, keys = TRUE), rownames = FALSE)
+
+    clinical.drug <- GDCprepare_clinic(query, clinical.info = "drug")
+
+    datatable(clinical.drug, options = list(scrollX = TRUE, keys = TRUE), rownames = FALSE)
+
+Mutation information is stored in two types of Mutation Annotation Format (MAF): Protected and Somatic (or Public) MAF files, which are derived from the GDC annotated VCF files. Annotated VCF files often have variants reported on multiple transcripts whereas the protected MAF (*protected.maf) only reports the most critically affected one and the Somatic MAFs (*somatic.maf) are further processed to remove low quality and potential germline variants. To download Somatic MAFs data using [TCGAbiolinks](http://bioconductor.org/packages/TCGAbiolinks/), *GDCquery_maf* function is provided (see listing below).
+
+> 突变信息存储在两种类型的突变注释格式（MAF）中：受保护和体细胞（或公共）MAF文件，它们来自GDC注释的VCF文件。带注释的VCF文件通常在多个转录本上报告变体，而受保护的MAF（*protected.MAF）仅报告受影响最严重的一个，并且体细胞MAF（*体细胞.MAF）被进一步处理以删除低质量和潜在的细胞系变体。
+
+    LGGmut <- GDCquery_Maf(tumor = "LGG", pipelines = "mutect2")
+
+    data(mafMutect2LGGGBM)
+    datatable(LGGmut[1:10,], options = list(scrollX = TRUE, keys = TRUE), rownames = FALSE)
+
+Finally, the Cancer Genome Atlas (TCGA) Research Network has reported integrated genome-wide studies of various diseases (ACC (Zheng et al. 2016), BRCA (C. G. A. Network and others 2012b), COAD (C. G. A. Network and others 2012a), GBM (Ceccarelli et al. 2016), HNSC (C. G. A. Network and others 2015a), KICH (Davis et al. 2014), KIRC (Network and others 2013), KIRP (Network and others 2016), LGG (Ceccarelli et al. 2016), LUAD (Network and others 2014c), LUSC (Network and others 2012), PRAD (Network and others 2015), READ (C. G. A. Network and others 2012a), SKCM (C. G. A. Network and others 2015b), STAD (Network and others 2014a), THCA (Network and others 2014d) and UCEC (Network and others 2014b)) which classified them in different subtypes. This classification can be retrieved using the *TCGAquery_subtype* function or by accessing the samples information in the SummarizedExperiment object that created by the *GDCprepare* function, which automatically incorporates it into the object.
+
+> 最后，癌症基因组图谱（TCGA）研究网络报告了各种疾病的全基因组综合研究（ACC（Zheng等人2016）、BRCA（CGA网络和其他2012b）、COAD（CGA网络和其他2012a）、GBM（Ceccarelli等人2016）、HNSC（CGA网络和其他2015a）、KICH（Davis等人2014）、KIRC（网络和其他2013）、KIRP（网络和其他2016），LGG（Ceccarelli等人，2016）、LUAD（Network and others 2014c）、LUSC（Network and others 2012）、PRAD（Network and others 2015）、READ（C.G.A.Network and others 2012a）、SKCM（C.G.A.Network and others 2015b）、STAD（Network and others 2014a）、THCA（Network and others 2014d）和UCEC（Network and others 2014b））,各研究将其分为不同的亚型。可以使用*TCGAquery*\u subtype函数或通过访问由*GDCprepare*函数创建的SummarizedExperiment对象中的样本信息来检索该分类，该函数会自动将其合并到对象中。
+
+    gbm.subtypes <- TCGAquery_subtype(tumor = "gbm")
+
+    datatable(gbm.subtypes[1:10,], options = list(scrollX = TRUE, keys = TRUE), rownames = FALSE)
+
+### Downloading data from Broad TCGA GDAC 从firehose下载数据
+
+The Bioconductor package [RTCGAToolbox](http://bioconductor.org/packages/RTCGAToolbox/) (Samur 2014) provides access to Firehose Level 3 and 4 data through the function *getFirehoseData*. The following arguments allow users to select the version and tumor type of interest:
+
+-   dataset - Tumor to download. A complete list of possibilities can be view with *getFirehoseDatasets* function.
+
+-   runDate - Stddata run dates. Dates can be viewed with *getFirehoseRunningDates* function.
+
+-   gistic2_Date - Analyze run dates. Dates can viewed with *getFirehoseAnalyzeDates* function.
+
+These arguments can be used to select the data type to download: RNAseq_Gene, Clinic, miRNASeq_Gene, ccRNAseq2_Gene_Norm, CNA_SNP, CNV_SNP, CNA_Seq, CNA_CGH, Methylation, Mutation, mRNA_Array , miRNA_Array, and RPPA.
+
+By default, [RTCGAToolbox](http://bioconductor.org/packages/RTCGAToolbox/) allows users to download up to 500 MB worth of data. To increase the size of the download, users are encouraged to use *fileSizeLimit* argument. An example is found in listing below. The *getData* function allows users to access the downloaded data.
+
+    library(RTCGAToolbox)
+
+    # Get the last run dates
+    lastRunDate <- getFirehoseRunningDates()[1]
+
+    # get DNA methylation data, RNAseq2 and clinical data for GBM
+    gbm.data <- getFirehoseData(
+      dataset = "GBM",
+      runDate = lastRunDate, 
+      gistic2Date = getFirehoseAnalyzeDates(1),
+      Methylation = FALSE,  
+      clinical = TRUE,
+      RNASeq2GeneNorm  = FALSE, 
+      Mutation = TRUE,
+      fileSizeLimit = 10000
+    )
+
+    gbm.mut <- getData(gbm.data,"Mutation")
+    gbm.clin <- getData(gbm.data,"clinical")
+
+Finally, [RTCGAToolbox](http://bioconductor.org/packages/RTCGAToolbox/) can access level 4 data, which can be handy when the user requires GISTIC results. GISTIC is used to identify genes targeted by somatic copy-number alterations (SCNAs) (Mermel et al. 2011).
+
+    # Download GISTIC results
+    lastanalyzedate <- getFirehoseAnalyzeDates(1)
+    gistic <- getFirehoseData("GBM",GISTIC = TRUE, gistic2Date = lastanalyzedate)
+
+    # get GISTIC results
+    gistic.allbygene <- getData(gistic, type = "GISTIC", platform = "AllByGene")
+    gistic.thresholedbygene <- getData(gistic, type = "GISTIC", platform = "ThresholdedByGene")
+
+    data(GBMGistic)
+    gistic.allbygene %>% head() %>% gt::gt()
+
+    gistic.thresholedbygene %>% head() %>% gt::gt()
+
+## Genomic analysis 基因组分析
+
+Copy number variations (CNVs) have a critical role in cancer development and progression. A chromosomal segment can be deleted or amplified as a result of genomic rearrangements, such as deletions, duplications, insertions, and translocations. CNVs are genomic regions greater than 1 kb with an alteration of copy number between two conditions (e.g., Tumor *versus* Normal).
+
+> 拷贝数变异（CNV）在癌症的发展和进展中起着至关重要的作用。染色体片段可以由于基因组重排而删除或扩增，例如删除、重复、插入和易位。CNV是大于1 kb的基因组区域，在两种情况下（例如，肿瘤*与*正常）拷贝数发生改变。
+
+TCGA collects copy number data and allows the CNV profiling of cancer. Tumor and paired-normal DNA samples were analyzed for CNV detection using microarray- and sequencing-based technologies. Level 3 processed data are the aberrant regions of the genome resulting from CNV segmentation, and they are available for all copy number technologies.
+
+> TCGA收集拷贝数数据，并允许对癌症进行CNV分析。使用基于微阵列和测序的技术分析肿瘤和配对正常DNA样本以检测CNV。3级处理数据是由CNV分割产生的基因组异常区域，可用于所有拷贝数技术。
+
+In this section, we will show how to analyze CNV level 3 data from TCGA to identify recurrent alterations in the cancer genome. We analyzed GBM segmented CNV from SNP array (Affymetrix Genome-Wide Human SNP Array 6.0).
+
+> 在本节中，我们将展示如何分析来自TCGA的CNV 3级数据，以确定癌症基因组中的常见改变。我们分析了来自SNP阵列（Affymetrix全基因组人类SNP阵列6.0）的GBM片段CNV。
+
+### Pre-Processing Data 数据预处理
+
+The only CNV platform available for GBM in TCGA is "Affymetrix Genome-Wide Human SNP Array 6.0". Using TCGAbiolinks, we queried for CNV SNP6 level 3 data for 20 primary solid tumor samples in the legacy database. Data for selected samples were downloaded and prepared in an rse objects (RangedSummarizedExperiment).
+
+> TCGA中用于GBM的唯一CNV平台是"Affymetrix全基因组人类SNP阵列6.0"。使用TCGAbiolinks，我们在遗留数据库中查询了20个原发性实体瘤样本的CNV SNP6 3级数据。在rse对象（RangedSummarizedExperiment）中下载并准备选定样本的数据。
+
+    library(TCGAbiolinks)
+    # Select common CN technology available for GBM and LGG
+    #############################
+    ## CNV data pre-processing ##
+    #############################
+    query.gbm.nocnv <- GDCquery(
+      project = "TCGA-GBM",
+      data.category = "Copy number variation",
+      legacy = TRUE,
+      file.type = "nocnv_hg19.seg",
+      sample.type = c("Primary solid Tumor")
+    )
+    # to reduce time we will select only 20 samples
+    query.gbm.nocnv$results[[1]] <- query.gbm.nocnv$results[[1]][1:20,]
+
+    GDCdownload(query.gbm.nocnv, files.per.chunk = 100)
+
+    gbm.nocnv <- GDCprepare(query.gbm.nocnv, save = TRUE, save.filename = "GBMnocnvhg19.rda")
+
+### Visualizing multiple genomic alteration events 可视化
+
+In order to visualize multiple genomic alteration events, we recommend using maftools plot which is provided by Bioconductor package [maftools](http://bioconductor.org/packages/maftools/) (Mayakonda and Koeffler 2016). The listing below shows how to download mutation data using *GDCquery_maf* (line 4) and prepare it to use with maftools.
+
+> 为了可视化多个基因组改变事件，我们建议使用生物导体包[maftools]提供的maftools图(<http://bioconductor.org/packages/maftools/>)（Mayakonda和Koeffler 2016）。
+
+    library(maftools)
+    # Download Mutation Annotation Format (MAF) files
+    LGGmut <- GDCquery_Maf(tumor = "LGG", pipelines = "mutect2")
+    GBMmut <- GDCquery_Maf(tumor = "GBM", pipelines = "mutect2")
+
+    # Merge them 
+    mut <- plyr::rbind.fill(LGGmut, GBMmut)
+    save(maf,file ="mafMutect2LGGGBM.rda", compress = "xz")
+
+The function read.maf is used to prepare the MAF data to be used with maftools. We also added clinical information that will be used in survival plots.
+
+> 函数read.maf用于准备与maf工具一起使用的maf数据。我们还添加了将用于生存图的临床信息。
+
+    library(maftools)
+    # recovering data from TCGAWorkflowData package.
+    data(mafMutect2LGGGBM)
+
+    # To prepare for maftools we will also include clinical data
+    # For a mutant vs WT survival analysis 
+    # get indexed clinical patient data for GBM samples
+    gbm_clin <- GDCquery_clinic(project = "TCGA-GBM", type = "Clinical")
+    # get indexed clinical patient data for LGG samples
+    lgg_clin <- GDCquery_clinic(project = "TCGA-LGG", type = "Clinical")
+    # Bind the results, as the columns might not be the same,
+    # we will will plyr rbind.fill, to have all columns from both files
+    clinical <- plyr::rbind.fill(gbm_clin,lgg_clin)
+    colnames(clinical)[1] <- "Tumor_Sample_Barcode"
+
+    # we need to create a binary variable 1 is dead 0 is not dead
+    plyr::count(clinical$vital_status)
+    clinical$Overall_Survival_Status <- 1 # dead
+    clinical$Overall_Survival_Status[which(clinical$vital_status != "Dead")] <- 0
+
+    # If patient is not dead we don't have days_to_death (NA)
+    # we will set it as the last day we know the patient is still alive
+    clinical$time <- clinical$days_to_death
+    clinical$time[is.na(clinical$days_to_death)] <- clinical$days_to_last_follow_up[is.na(clinical$days_to_death)]
+
+    # Create object to use in maftools
+    maf <- read.maf(maf = mut, clinicalData = clinical, isTCGA = TRUE)
+
+We can plot a MAF summary.
+
+    plotmafSummary(
+      maf = maf,
+      rmOutlier = TRUE,
+      addStat = 'median',
+      dashboard = TRUE
+    )
+
+We can draw oncoplot with the top 20 most mutated genes and add metadata information such as molecular subtypes information.
+
+    oncoplot(
+      maf = maf,
+      top = 20,
+      legendFontSize = 8,
+      clinicalFeatures = c("tissue_or_organ_of_origin")
+    )
+
+We can also perform survival analysis by grouping samples from MAF based on mutation status of given gene(s).
+
+    plot <- mafSurvival(
+      maf = maf,
+      genes = "TP53",
+      time = 'time',
+      Status = 'Overall_Survival_Status',
+      isTCGA = TRUE
+    )
+
+    ## TP53 
+    ##  348 
+    ##     Group medianTime   N
+    ## 1: Mutant        629 347
+    ## 2:     WT        443 549
+
+## Transcriptomic analysis 转录组分析
+
+### Pre-Processing Data 数据预处理
+
+The [LGG](https://gdc-portal.nci.nih.gov/legacy-archive/search/f?filters=%7B%22op%22:%22and%22,%22content%22:%5B%7B%22op%22:%22in%22,%22content%22:%7B%22field%22:%22cases.project.project_id%22,%22value%22:%5B%22TCGA-LGG%22%5D%7D%7D,%7B%22op%22:%22in%22,%22content%22:%7B%22field%22:%22files.data_category%22,%22value%22:%5B%22Gene%20expression%22%5D%7D%7D,%7B%22op%22:%22in%22,%22content%22:%7B%22field%22:%22files.data_type%22,%22value%22:%5B%22Gene%20expression%20quantification%22%5D%7D%7D,%7B%22op%22:%22in%22,%22content%22:%7B%22field%22:%22files.platform%22,%22value%22:%5B%22Illumina%20HiSeq%22%5D%7D%7D%5D%7D) and [GBM](https://gdc-portal.nci.nih.gov/legacy-archive/search/f?filters=%7B%22op%22:%22and%22,%22content%22:%5B%7B%22op%22:%22in%22,%22content%22:%7B%22field%22:%22cases.project.project_id%22,%22value%22:%5B%22TCGA-GBM%22%5D%7D%7D,%7B%22op%22:%22in%22,%22content%22:%7B%22field%22:%22files.data_category%22,%22value%22:%5B%22Gene%20expression%22%5D%7D%7D,%7B%22op%22:%22in%22,%22content%22:%7B%22field%22:%22files.data_type%22,%22value%22:%5B%22Gene%20expression%20quantification%22%5D%7D%7D,%7B%22op%22:%22in%22,%22content%22:%7B%22field%22:%22files.platform%22,%22value%22:%5B%22Illumina%20HiSeq%22%5D%7D%7D%5D%7D) data used for following transcriptomic analysis were downloaded using TCGAbiolinks. We downloaded only primary solid tumor (TP) samples, which resulted in 516 LGG samples and 156 GBM samples, then prepared it in two separate rse objects (*RangedSummarizedExperiment*) saving them as an R object with a filename including both the cancer name and the name of the platform used for gene expression data.
+
+> 用于以下转录组分析的LGG和GBM数据使用TCGAbiolinks下载。我们只下载了原发性实体瘤（TP）样本，产生了516个LGG样本和156个GBM样本，然后将其制备在两个单独的rse对象（RangedSummarizedExperiment）中，将其保存为R对象，文件名包括癌症名称和用于基因表达数据的平台名称。
+
+    query <- GDCquery(
+      project = "TCGA-GBM",
+      data.category = "Gene expression",
+      data.type = "Gene expression quantification",
+      platform = "Illumina HiSeq", 
+      file.type  = "results", 
+      sample.type = c("Primary solid Tumor"),
+      legacy = TRUE
+    )
+    # We will use only 20 samples to make the example faster
+    query$results[[1]] <-  query$results[[1]][1:20,]                  
+    GDCdownload(query)
+    gbm.exp <- GDCprepare(
+      query = query, 
+      save = TRUE, 
+      summarizedExperiment = TRUE, 
+      save.filename = "GBMIllumina_HiSeq.rda"
+    )
+
+    query <- GDCquery(
+      project = "TCGA-LGG",
+      data.category = "Gene expression",
+      data.type = "Gene expression quantification",
+      platform = "Illumina HiSeq", 
+      file.type  = "results", 
+      sample.type = c("Primary solid Tumor"),
+      legacy = TRUE
+    )
+    # We will use only 20 samples to make the example faster
+    query$results[[1]] <-  query$results[[1]][1:20,]
+    GDCdownload(query)
+    lgg.exp <- GDCprepare(
+      query = query, 
+      save = TRUE, 
+      summarizedExperiment = TRUE, 
+      save.filename = "LGGIllumina_HiSeq.rda"
+    )
+
+To pre-process the data, first, we searched for possible outliers using the *TCGAanalyze_Preprocessing* function, which performs an Array Array Intensity correlation AAIC. In this way, we defined a square symmetric matrix of pearson correlation among all samples in each cancer type (LGG or GBM). This matrix found 0 samples with low correlation (cor.cut = 0.6) that can be identified as possible outliers.
+
+> 为了预处理数据，首先，我们使用TCGAanalyze_预处理函数搜索可能的异常值，该函数执行阵列强度相关AAIC。通过这种方式，我们在每种癌症类型（LGG或GBM）的所有样本之间定义了皮尔逊相关的平方对称矩阵。该矩阵发现了0个低相关性（cor.cut=0.6）的样本，这些样本可以识别为可能的异常值。
+
+Second, using the *TCGAanalyze_Normalization* function, which encompasses the functions of the [EDASeq](http://bioconductor.org/packages/EDASeq/) package, we normalized mRNA transcripts.
+
+> 其次，使用TCGAanalyze_归一化函数（包含EDASeq包的功能），我们归一化了mRNA转录。
+
+This function implements Within-lane normalization procedures to adjust for GC-content effect (or other gene-level effects) on read counts: loess robust local regression, global-scaling, and full-quantile normalization (Risso et al. 2011) and between-lane normalization procedures to adjust for distributional differences between lanes (e.g., sequencing depth): global-scaling and full-quantile normalization (Bullard et al. 2010).
+
+> 该函数实现车道内归一化过程，以调整GC含量对读取计数的影响（或其他基因水平的影响）：稳健局部回归、全局缩放、，和全分位数归一化（Risso等人，2011年）以及车道间归一化程序，以调整车道之间的分布差异（例如，排序深度）：全局缩放和全分位数归一化（Bullard等人，2010年）。
+
+    data("LGGIllumina_HiSeq")
+    data("GBMIllumina_HiSeq")
+
+    dataPrep_LGG <- TCGAanalyze_Preprocessing(
+      object = lgg.exp,
+      cor.cut = 0.6,    
+      datatype = "raw_count",
+      filename = "LGG_IlluminaHiSeq_RNASeqV2.png"
+    )
+
+    dataPrep_GBM <- TCGAanalyze_Preprocessing(
+      object = gbm.exp,
+      cor.cut = 0.6, 
+      datatype = "raw_count",
+      filename = "GBM_IlluminaHiSeq_RNASeqV2.png"
+    )
+
+    dataNorm <- TCGAanalyze_Normalization(
+      tabDF = cbind(dataPrep_LGG, dataPrep_GBM),
+      geneInfo = TCGAbiolinks::geneInfo,
+      method = "gcContent"
+    ) #18323   672
+
+    dataFilt <- TCGAanalyze_Filtering(
+      tabDF = dataNorm,
+      method = "quantile",
+      qnt.cut =  0.25
+    )  # 13742   672
+
+    save(dataFilt, file = paste0("LGG_GBM_Norm_IlluminaHiSeq.rda"))
+
+    dataFiltLGG <- subset(
+      dataFilt, 
+      select = substr(colnames(dataFilt),1,12) %in% lgg_clin$bcr_patient_barcode
+    )
+
+    dataFiltGBM <- subset(
+      dataFilt, 
+      select = substr(colnames(dataFilt),1,12) %in% gbm_clin$bcr_patient_barcode
+    )
+
+    dataDEGs <- TCGAanalyze_DEA(
+      mat1 = dataFiltLGG,
+      mat2 = dataFiltGBM,
+      Cond1type = "LGG",
+      Cond2type = "GBM",
+      fdr.cut = 0.01 ,
+      logFC.cut = 1,
+      method = "glmLRT"
+    )
+
+    # Number of differentially expressed genes (DEG)
+    nrow(dataDEGs)
+
+[1] 2535
+
+### EA: enrichment analysis 富集分析
+
+In order to understand the underlying biological process of DEGs we performed an enrichment analysis using *TCGAanalyze_EA_complete* function.
+
+> 为了了解DEG的潜在生物过程，我们使用TCGAanalyze\\u EA\\u完整函数进行了富集分析。
+
+    #-------------------  4.2 EA: enrichment analysis             --------------------
+    ansEA <- TCGAanalyze_EAcomplete(
+      TFname = "DEA genes LGG Vs GBM", 
+      RegulonList = rownames(dataDEGs)
+    )
+
+    TCGAvisualize_EAbarplot(
+      tf = rownames(ansEA$ResBP),
+      filename = NULL,
+      GOBPTab = ansEA$ResBP,
+      nRGTab = rownames(dataDEGs),
+      nBar = 20)
+
+    TCGAvisualize_EAbarplot(
+      tf = rownames(ansEA$ResBP),
+      filename = NULL,
+      GOCCTab = ansEA$ResCC,
+      nRGTab = rownames(dataDEGs),
+      nBar = 20
+    )
+
+    TCGAvisualize_EAbarplot(
+      tf = rownames(ansEA$ResBP),
+      filename = NULL,
+      GOMFTab = ansEA$ResMF,
+      nRGTab = rownames(dataDEGs),
+      nBar = 20
+    )
+
+    TCGAvisualize_EAbarplot(
+      tf = rownames(ansEA$ResBP),
+      filename = NULL,
+      PathTab = ansEA$ResPat,
+      nRGTab = rownames(dataDEGs),
+      nBar = 20
+    )
+
+The plot shows canonical pathways significantly overrepresented (enriched) by the DEGs (differentially expressed genes) with the number of genes for the main categories of three ontologies (<GO:biological> process, <GO:cellular> component, and <GO:molecular> function, respectively). The most statistically significant canonical pathways identified in DEGs list are listed according to their p-value corrected FDR (-Log) (colored bars) and the ratio of list genes found in each pathway over the total number of genes in that pathway (ratio, red line).]
+
+> 该图显示，典型路径明显过度表达（富集）DEG（差异表达基因），基因数量主要包括三种本体（GO：生物过程、GO：细胞成分和GO：分子功能）。DEGs列表中确定的最具统计意义的典型路径根据其p值校正的FDR（-Log）（彩色条）和在每个路径中发现的列表基因与该路径中基因总数的比率（比率，红线）列出。]
+
+*TCGAanalyze_EAbarplot* outputs a bar chart as shown in figure with the number of genes for the main categories of three ontologies (i.e., <GO:biological> process, <GO:cellular> component, and <GO:molecular> function).
+
+> TCGAanalyze_EAbarplot输出如图所示的条形图，其中包含三种本体论（即GO：生物过程、GO：细胞成分和GO：分子功能）主要类别的基因数量。
+
+The Figure shows canonical pathways significantly overrepresented (enriched) by the DEGs. The most statistically significant canonical pathways identified in the DEGs are ranked according to their p-value corrected FDR (-Log10) (colored bars) and the ratio of list genes found in each pathway over the total number of genes in that pathway (ratio, red line).
+
+> 该图显示了DEG显著过度代表（富集）的典型路径。DEG中确定的最具统计意义的典型路径根据其p值校正的FDR（-Log10）（彩色条）和每个路径中发现的列表基因与该路径中基因总数的比率（比率，红线）进行排序。
+
+### PEA: Pathways enrichment analysis 通路富集分析
+
+To verify if the genes found have a specific role in a pathway, the Bioconductor package [pathview](http://bioconductor.org/packages/pathview/) (Luo and Brouwer 2013) can be used. Listing below shows an example how to use it. It can receive, for example, a named vector of genes with their expression level, the pathway.id which can be found in [KEGG database](http://www.genome.jp/kegg/pathway.html), the species ('hsa' for Homo sapiens) and the limits for the gene expression.
+
+> 为了验证所发现的基因是否在通路中具有特定作用，可以使用Bioconductor package pathview（Luo和Brouwer 2013）。下面的清单显示了如何使用它的示例。例如，它可以接收基因的命名载体及其表达水平，即路径。可在KEGG数据库中找到的id、物种（"hsa"代表智人）和基因表达的限制。
+
+    library(SummarizedExperiment)
+    GenelistComplete <- rownames(assay(lgg.exp,1))
+
+    # DEGs TopTable
+    dataDEGsFiltLevel <- TCGAanalyze_LevelTab(
+      FC_FDR_table_mRNA = dataDEGs,
+      typeCond1 = "LGG",
+      typeCond2 = "GBM",
+      TableCond1 = dataFilt[,colnames(dataFiltLGG)],
+      TableCond2 = dataFilt[,colnames(dataFiltGBM)]
+    )
+
+    dataDEGsFiltLevel$GeneID <- 0
+
+    library(clusterProfiler)
+    # Converting Gene symbol to geneID
+    eg = as.data.frame(
+      bitr(dataDEGsFiltLevel$mRNA,
+           fromType = "SYMBOL",
+           toType = "ENTREZID",
+           OrgDb = "org.Hs.eg.db")
+    )
+    eg <- eg[!duplicated(eg$SYMBOL),]
+
+    dataDEGsFiltLevel <- dataDEGsFiltLevel[dataDEGsFiltLevel$mRNA %in% eg$SYMBOL,]
+
+    dataDEGsFiltLevel <- dataDEGsFiltLevel[order(dataDEGsFiltLevel$mRNA,decreasing=FALSE),]
+    eg <- eg[order(eg$SYMBOL,decreasing=FALSE),]
+
+    # table(eg$SYMBOL == dataDEGsFiltLevel$mRNA) should be TRUE
+    all(eg$SYMBOL == dataDEGsFiltLevel$mRNA)
+
+[1] TRUE
+
+    dataDEGsFiltLevel$GeneID <- eg$ENTREZID
+
+    dataDEGsFiltLevel_sub <- subset(dataDEGsFiltLevel, select = c("GeneID", "logFC"))
+    genelistDEGs <- as.numeric(dataDEGsFiltLevel_sub$logFC)
+    names(genelistDEGs) <- dataDEGsFiltLevel_sub$GeneID
+    library(pathview)
+    # pathway.id: hsa05214 is the glioma pathway
+    # limit: sets the limit for gene expression legend and color
+    hsa05214 <- pathview::pathview(
+      gene.data  = genelistDEGs,
+      pathway.id = "hsa05214",
+      species    = "hsa",
+      limit = list(gene = as.integer(max(abs(genelistDEGs))))
+    )
+
+The red genes are up-regulated and the green genes are down-regulated in the LGG samples compared to GBM.
+
+Pathways enrichment analysis: glioma pathway. Red defines genes that are up-regulated and green defines genes that are down-regulated.
+
+> 与GBM相比，LGG样本中的红色基因上调，绿色基因下调。
+>
+> 通路富集分析：胶质瘤通路。红色定义上调基因，绿色定义下调基因。
+
+### Inference of gene regulatory networks 基因调节网络
+
+Starting with the set of differentially expressed genes, we infer gene regulatory networks using the following state-of-the-art inference algorithms: ARACNE (Margolin et al. 2006), CLR (Faith et al. 2007), MRNET (Meyer et al. 2007) and C3NET (Altay and Emmert-Streib 2010). These methods are based on mutual inference and use different heuristics to infer the edges of the network. These methods have been made available via Bioconductor/CRAN packages ([MINET](http://bioconductor.org/packages/minet/) (Meyer, Lafitte, and Bontempi 2008) and [c3net](https://cran.r-project.org/web/packages/c3net/index.html), (Altay and Emmert-Streib 2010) respectively). Many gene regulatory interactions have been experimentally validated and published. These 'known' interactions can be accessed using different tools and databases such as BioGrid (Stark et al. 2006) or GeneMANIA (Montojo et al. 2010). However, this knowledge is far from complete and in most cases only contains a small subset of the real interactome. The quality assessment of the inferred networks can be carried out by comparing the inferred interactions to those that have been validated. This comparison results in a confusion matrix as presented in Table below.
+
+> 从一组差异表达基因开始，我们使用以下最先进的推理算法推断基因调控网络：ARACNE（Margolin等人，2006年）、CLR（Faith等人，2007年）、MRNET（Meyer等人，2007年）和C3NET（Altay和Emmert Streib 2010年）。这些方法基于相互推理，并使用不同的启发式来推断网络的边缘。这些方法已通过生物导体/CRAN软件包（MINET（Meyer、Lafitte和Bontempi 2008）和c3net（Altay和Emmert Streib 2010）提供。许多基因调控相互作用已被实验验证并发表。可以使用不同的工具和数据库访问这些"已知"交互，例如BioGrid（Stark等人，2006年）或GeneMANIA（Montojo等人，2010年）。然而，这些知识还远远不够完整，在大多数情况下只包含真实交互组的一小部分。通过将推断的相互作用与已验证的相互作用进行比较，可以对推断的网络进行质量评估。这种比较产生了下表所示的混淆矩阵。
+
+| \| --- \| --- \|Confusion matrix, comparing inferred network to network of validated interactions.\|
+| \|validated not \| validated/n \| on-existing \|
+| \|-- \| --\| -- \|
+| \|inferred \| TP \| FP \|
+| \|not inferred \| FN \| TN \|
+
+Different quality measures can then be computed such as the false positive rate
+
+fpr=FPFP+TN,
+
+the true positive rate (also called recall)
+
+tpr=TPTP+FN
+
+and the precision
+
+p=TPTP+FP.
+
+The performance of an algorithm can then be summarized using ROC (false positive rate versus true positive rate) or PR (precision versus recall) curves.
+
+A weakness of this type of comparison is that an edge that is not present in the set of known interactions can either mean that an experimental validation has been tried and did not show any regulatory mechanism or (more likely) has not yet been attempted.\
+In the following, we ran the nce on i) **the 2,901 differentially expressed genes identified in Section "Transcriptomic analysis".**
+
+**Retrieving known interactions 获取已知交互**
+
+We obtained a set of known interactions from the [BioGrid database](http://thebiogrid.org/).
+
+There are 3,941 unique interactions between the 2,901 differentially expressed genes.
+
+> 我们从BioGrid数据库中获得了一组已知的相互作用。
+>
+> 2901个差异表达基因之间有3941个独特的相互作用。
+
+**Using differentially expressed genes from TCGAbiolinks workflow**
+
+We start this analysis by inferring one gene set for the LGG data.
+
+    ### read biogrid info (available in TCGAWorkflowData as "biogrid")
+    ### Check last version in https://thebiogrid.org/download.php 
+    file <- "http://thebiogrid.org/downloads/archives/Release%20Archive/BIOGRID-3.4.146/BIOGRID-ALL-3.4.146.tab2.zip"
+    if(!file.exists(gsub("zip","txt",basename(file)))){
+      downloader::download(file,basename(file))
+      unzip(basename(file),junkpaths =TRUE)
+    }
+
+    tmp.biogrid <- read.csv(gsub("zip","txt",basename(file)), header=TRUE, sep="\t", stringsAsFactors=FALSE)
+
+    ### plot details (colors & symbols)
+    mycols <- c('#e41a1c','#377eb8','#4daf4a','#984ea3','#ff7f00','#ffff33','#a65628')
+
+    ### load network inference libraries
+    library(minet)
+    library(c3net)
+
+    ### deferentially identified genes using TCGAbiolinks
+    # we will use only a subset (first 50 genes) of it to make the example faster
+    names.genes.de <- rownames(dataDEGs)[1:30]
+
+    data(biogrid)
+    net.biogrid.de <- getAdjacencyBiogrid(tmp.biogrid, names.genes.de)
+
+    mydata <- dataFiltLGG[names.genes.de, ]
+
+    ### infer networks
+    t.mydata <- t(mydata)
+    net.aracne <- minet(t.mydata, method = "aracne")
+    net.mrnet <- minet(t.mydata)
+    net.clr <- minet(t.mydata, method = "clr")
+    net.c3net <- c3net(mydata)
+
+    ### validate compared to biogrid network
+    tmp.val <- list(
+      validate(net.aracne, net.biogrid.de), 
+      validate(net.mrnet, net.biogrid.de),
+      validate(net.clr, net.biogrid.de), 
+      validate(net.c3net, net.biogrid.de)
+    )
+
+    ### plot roc and compute auc for the different networks
+    dev1 <- show.roc(tmp.val[[1]],cex=0.3,col=mycols[1],type="l")
+    res.auc <- auc.roc(tmp.val[[1]])
+    for(count in 2:length(tmp.val)){
+      show.roc(tmp.val[[count]],device=dev1,cex=0.3,col=mycols[count],type="l")
+      res.auc <- c(res.auc, auc.roc(tmp.val[[count]]))
+    }
+
+    legend("bottomright", legend=paste(c("aracne","mrnet","clr","c3net"), signif(res.auc,4), sep=": "),
+           col=mycols[1:length(tmp.val)],lty=1, bty="n" )
+    # Please, uncomment this line to produce the pdf files.
+    # dev.copy2pdf(width=8,height=8,device = dev1, file = paste0("roc_biogrid_",cancertype,".pdf"))
+
+ROC with corresponding AUC for inferred GBM networks compared to BioGrid interactions
+
+In Figure above, the obtained ROC curve and the corresponding area under the curve (AUC) are presented. It can be observed that CLR and MRNET perform best when comparing the inferred network with known interactions from the BioGrid database.
+
+> 与BioGrid相互作用相比，推断GBM网络的ROC和相应AUC
+>
+> 上图显示了获得的ROC曲线和曲线下的相应面积（AUC）。可以观察到，当将推断的网络与来自BioGrid数据库的已知交互进行比较时，CLR和MRNET表现最佳。
+
+## Epigenetic analysis 表观遗传学分析
+
+The DNA methylation is an important component in numerous cellular processes, such as embryonic development, genomic imprinting, X-chromosome inactivation, and preservation of chromosome stability (Phillips 2008).
+
+> DNA甲基化是许多细胞过程中的重要组成部分，例如胚胎发育、基因组印记、X染色体失活和染色体稳定性的保存（Phillips 2008）。
+
+In mammals DNA methylation is found sparsely but globally, distributed in definite CpG sequences throughout the entire genome; however, there is an exception. CpG islands (CGIs) which are short interspersed DNA sequences that are enriched for GC. These islands are normally found in sites of transcription initiation and their methylation can lead to gene silencing (Deaton and Bird 2011).
+
+> 在哺乳动物中，DNA甲基化被发现稀疏但全局性，在整个基因组中以确定的CpG序列分布；然而，有一个例外。CpG岛（CGI）是短的散布DNA序列，富集用于GC。这些岛通常存在于转录起始位点，其甲基化可导致基因沉默（Deaton和Bird 2011）。
+
+Thus, the investigation of the DNA methylation is crucial to understanding regulatory gene networks in cancer as the DNA methylation represses transcription (Robertson 2005). Therefore, the DMR (Differentially Methylation Region) detection can help us investigate regulatory gene networks.
+
+> 因此，DNA甲基化的研究对于理解癌症中的调控基因网络至关重要，因为DNA甲基化抑制转录（Robertson 2005）。因此，DMR（差异甲基化区）检测可以帮助我们研究调控基因网络。
+
+This section describes the analysis of DNA methylation using the Bioconductor package [TCGAbiolinks](http://bioconductor.org/packages/TCGAbiolinks/) (Colaprico et al. 2016). For this analysis, and due to the time required to perform it, we selected only 10 LGG samples and 10 GBM samples that have both DNA methylation data from Infinium HumanMethylation450 and gene expression from Illumina HiSeq 2000 RNA Sequencing Version 2 analysis. We started by checking the mean DNA methylation of different groups of samples, then performed a DMR in which we search for regions of possible biological significance, (e.g., regions that are methylated in one group and unmethylated in the other). After finding these regions, they can be visualized using heatmaps.
+
+> 本节描述了使用生物导体包TCGAbiolinks分析DNA甲基化（Colaprico等人，2016）。对于该分析，由于执行该分析所需的时间，我们仅选择了10个LGG样本和10个GBM样本，这些样本具有来自Infinium HumanMethylation450的DNA甲基化数据和来自Illumina HiSeq 2000 RNA测序版本2分析的基因表达。我们首先检查不同样本组的平均DNA甲基化，然后进行DMR，在其中我们搜索可能具有生物学意义的区域（例如，一组中甲基化而另一组中未甲基化的区域）。找到这些区域后，可以使用热图将其可视化。
+
+### Visualizing the mean DNA methylation of each patient 可视化
+
+It should be highlighted that some pre-processing of the DNA methylation data was done. The DNA methylation data from the 450k platform has three types of probes cg (CpG loci) , ch (non-CpG loci) and rs (SNP assay). The last type of probe can be used for sample identification and tracking and should be excluded for differential methylation analysis according to the [ilumina manual](https://support.illumina.com/content/dam/illumina-support/documents/myillumina/90666eaa-0c66-48b4-8199-3be99b2b3ef9/genomestudio_methylation_v1.8_user_guide_11319130_b.pdf). Therefore, the rs probes were removed. Also, probes in chromosomes X, Y were removed to eliminate potential artifacts originating from the presence of a different proportion of males and females (Marabita et al. 2013). The last pre-processing steps were to remove probes with at least one NA value.
+
+> 应该强调的是，对DNA甲基化数据进行了一些预处理。来自450k平台的DNA甲基化数据有三种类型的探针cg（CpG位点）、ch（非CpG位点）和rs（SNP分析）。最后一种探针可用于样品识别和跟踪，根据ilumina手册，应排除在差异甲基化分析之外。因此，移除了rs探针。此外，去除了X、Y染色体中的探针，以消除因不同比例的男性和女性而产生的潜在伪影（Marabita等人，2013年）。最后的预处理步骤是移除至少具有一个NA值的探针。
+
+After this pre-processing step and using the function *TCGAvisualize_meanMethylation* function, we can look at the mean DNA methylation of each patient in each group. It receives as argument a *SummarizedExperiment* object with the DNA methylation data, and the arguments *groupCol* and *subgroupCol* which should be two columns from the sample information matrix of the *SummarizedExperiment* object (accessed by the *colData* function).
+
+> 在这个预处理步骤之后，使用函数TCGAvisualize\\u meanMethylation函数，我们可以查看每个组中每个患者的平均DNA甲基化。它接收带有DNA甲基化数据的SummaredExperiment对象，以及来自SummaredExperiment对象的样本信息矩阵（由colData函数访问）的两列参数groupCol和subcol作为参数。
+
+    #----------------------------
+    # Obtaining DNA methylation
+    #----------------------------
+    # Samples
+    lgg.samples <- matchedMetExp("TCGA-LGG", n = 10)
+    gbm.samples <- matchedMetExp("TCGA-GBM", n = 10)
+    samples <- c(lgg.samples,gbm.samples)
+
+    #-----------------------------------
+    # 1 - Methylation
+    # ----------------------------------
+    # For methylation it is quicker in this case to download the tar.gz file
+    # and get the samples we want instead of downloading files by files
+    query <- GDCquery(
+      project = c("TCGA-LGG","TCGA-GBM"),
+      data.category = "DNA methylation",
+      platform = "Illumina Human Methylation 450",
+      legacy = TRUE, 
+      barcode = samples
+    )
+    GDCdownload(query)
+    met <- GDCprepare(query, save = FALSE)
+
+    # We will use only chr9 to make the example faster
+    met <- subset(met,subset = as.character(seqnames(met)) %in% c("chr9"))
+    # This data is avaliable in the package (object elmerExample)
+
+    data(elmerExample)
+    #----------------------------
+    # Mean methylation
+    #----------------------------
+    # Plot a barplot for the groups in the disease column in the
+    # summarizedExperiment object
+
+    # remove probes with NA (similar to na.omit)
+    met <- met[rowSums(is.na(assay(met))) == 0,]
+
+    df <- data.frame(
+      "Sample.mean" = colMeans(assay(met), na.rm = TRUE),
+      "groups" = met$project_id
+    )
+
+    library(ggpubr)
+    ggpubr::ggboxplot(
+      data = df,
+      y = "Sample.mean",
+      x = "groups",
+      color = "groups",
+      add = "jitter",
+      ylab = expression(paste("Mean DNA methylation (", beta, "-values)")),
+      xlab = ""
+    ) + stat_compare_means() 
+
+The figure above illustrates a mean DNA methylation plot for each sample in the GBM group (140 samples) and a mean DNA methylation for each sample in the LGG group. Genome-wide view of the data highlights a difference between the groups of tumors.
+
+> 上图显示了GBM组（140个样本）中每个样本的平均DNA甲基化图和LGG组中每个样本的平均DNA甲基化。数据的全基因组视图突出了不同肿瘤组之间的差异。
+
+### Searching for differentially methylated CpG sites 搜寻差异甲基化CpG位点
+
+The next step is to define differentially methylated CpG sites between the two groups. This can be done using the *TCGAanalyze_DMC* function (see listing below). The DNA methylation data (level 3) is presented in the form of beta-values that uses a scale ranging from 0.0 (probes completely unmethylated ) up to 1.0 (probes completely methylated).
+
+> 下一步是确定两组之间差异甲基化CpG位点。这可以使用TCGAanalyze_DMC函数来完成（见下面的清单）。DNA甲基化数据（3级）以β值的形式呈现，β值使用从0.0（探针完全未甲基化）到1.0（探针完全甲基化）的范围。
+
+To find these differentially methylated CpG sites, first, the function calculates the difference between the mean DNA methylation (mean of the beta-values) of each group for each probe. Second, it tests for differential expression between two groups using the Wilcoxon test adjusting by the Benjamini-Hochberg method. Arguments of TCGAanalyze_DMR was set to require a minimum absolute beta-values difference of 0.15 and an adjusted p-value of less than 0.05.
+
+> 为了找到这些差异甲基化的CpG位点，首先，该函数计算每个探针每组的平均DNA甲基化（β值的平均值）之间的差异。其次，使用经Benjamini-Hochberg方法调整的Wilcoxon检验测试两组之间的差异表达。TCGAanalyze_DMR的参数设置为要求最小绝对β值差为0.15，调整后的p值小于0.05。
+
+After these tests, a volcano plot (x-axis: difference of mean DNA methylation, y-axis: statistical significance) is created to help users identify the differentially methylated CpG sites and return the object with the results in the rowRanges.
+
+> 在这些测试之后，创建火山图（x轴：平均DNA甲基化的差异，y轴：统计显著性），以帮助用户识别差异甲基化CpG位点，并将结果返回到行范围中的对象。
+
+    #------- Searching for differentially methylated CpG sites     ----------
+    dmc <- TCGAanalyze_DMC(
+      data = met,
+      groupCol = "project_id", # a column in the colData matrix
+      group1 = "TCGA-GBM", # a type of the disease type column
+      group2 = "TCGA-LGG", # a type of the disease column
+      p.cut = 0.05,
+      diffmean.cut = 0.15,
+      save = FALSE,
+      legend = "State",
+      plot.filename = "LGG_GBM_metvolcano.png",
+      cores = 1 # if set to 1 there will be a progress bar
+    )
+
+The figure below shows the volcano plot produced by listing below. This plot aids the user in selecting relevant thresholds, as we search for candidate biological DMRs.
+
+> 下图显示了由以下列表生成的火山图。当我们搜索候选生物DMR时，该图有助于用户选择相关阈值。
+
+Volcano plot: searching for differentially methylated CpG sites (x-axis:difference of mean DNA methylation, y-axis: statistical significance)
+
+To visualize the level of DNA methylation of these probes across all samples, we use heatmaps that can be generated by the Bioconductor package [complexHeatmap](http://bioconductor.org/packages/ComplexHeatmap/) (Z., n.d.). To create a heatmap using the [complexHeatmap](http://bioconductor.org/packages/ComplexHeatmap/) package, the user should provide at least one matrix with the DNA methylation levels. Also, annotation layers can be added and placed at the bottom, top, left side and right side of the heatmap to provide additional metadata description. The listing below shows the code to produce the heatmap of a DNA methylation datum.
+
+> 为了可视化所有样本中这些探针的DNA甲基化水平，我们使用了可由生物导体包complexHeatmap（Z.，n.d.）生成的热图。要使用complexHeatmap包创建热图，用户应提供至少一个具有DNA甲基化水平的矩阵。此外，可以添加注释层并将其放置在热图的底部、顶部、左侧和右侧，以提供额外的元数据描述。下面的清单显示了生成DNA甲基化数据热图的代码。
+
+    #--------------------------
+    # DNA Methylation heatmap
+    #-------------------------
+    library(ComplexHeatmap)
+    clinical <- plyr::rbind.fill(gbm_clin,lgg_clin)
+
+    # get the probes that are Hypermethylated or Hypomethylated
+    # met is the same object of the section 'DNA methylation analysis'
+    status.col <- "status"
+    probes <- rownames(dmc)[grep("hypo|hyper",dmc$status,ignore.case = TRUE)]
+    sig.met <- met[probes,]
+
+
+    # top annotation, which sampples are LGG and GBM
+    # We will add clinical data as annotation of the samples
+    # we will sort the clinical data to have the same order of the DNA methylation matrix
+    clinical.order <- clinical[match(substr(colnames(sig.met),1,12),clinical$bcr_patient_barcode),]
+
+    ta <- HeatmapAnnotation(
+      df = clinical.order[, c("disease", "gender", "vital_status", "race")],
+      col = list(
+        disease = c("LGG" = "grey", "GBM" = "black"),
+        gender = c("male" = "blue", "female" = "pink")
+      )
+    )
+
+    # row annotation: add the status for LGG in relation to GBM
+    # For exmaple: status.gbm.lgg Hypomethyated means that the
+    # mean DNA methylation of probes for lgg are hypomethylated
+    # compared to GBM ones.
+    ra = rowAnnotation(
+      df = dmc[probes, status.col],
+      col = list(
+        "status.TCGA.GBM.TCGA.LGG" =
+          c("Hypomethylated" = "orange",
+            "Hypermethylated" = "darkgreen")
+      ),
+      width = unit(1, "cm")
+    )
+
+    heatmap  <- Heatmap(
+      matrix = assay(sig.met),
+      name = "DNA methylation",
+      col = matlab::jet.colors(200),
+      show_row_names = FALSE,
+      cluster_rows = TRUE,
+      cluster_columns = FALSE,
+      show_column_names = FALSE,
+      bottom_annotation = ta,
+      column_title = "DNA Methylation"
+    ) 
+    # Save to pdf
+    png("heatmap.png",width = 600, height = 400)
+    draw(heatmap, annotation_legend_side =  "bottom")
+    dev.off()
+
+### Motif analysis 基序分析
+
+Motif discovery is the attempt to extract small sequence signals hidden within largely non-functional intergenic sequences. These small sequence nucleotide signals (6-15 bp) might have a biological significance as they can be used to control the expression of genes. These sequences are called Regulatory motifs. The Bioconductor package [rGADEM](http://bioconductor.org/packages/rGADEM/) (Droit et al. 2015; Li 2009) provides an efficient *de novo* motif discovery algorithm for large-scale genomic sequence data.
+
+> 模体发现是试图提取隐藏在大部分非功能基因间序列中的小序列信号。这些小序列核苷酸信号（6-15 bp）可能具有生物学意义，因为它们可以用于控制基因的表达。这些序列被称为调节基序。生物导体包rGADEM（Droit等人，2015；Li 2009）为大规模基因组序列数据提供了一种高效的从头基序发现算法。
+
+The user may be interested in looking for unique signatures in the regions defined by 'differentially methylated' to identify candidate transcription factors that could bind to these elements affected by the accumulation or absence of DNA methylation. For this analysis we use a sequence of 100 bases before and after the probe location. An object will be returned which contains all relevant information about your motif analysis (i.e., sequence consensus, PWM, chromosome, p-value, etc).
+
+> 用户可能有兴趣在"差异甲基化"定义的区域中寻找独特的特征，以识别可能与这些受DNA甲基化累积或缺失影响的元件结合的候选转录因子。在本分析中，我们使用了探针位置前后100个碱基的序列。将返回一个对象，其中包含有关motif分析的所有相关信息（即序列一致性、脉宽调制、染色体、p值等）。
+
+Using Bioconductor package [motifStack](http://bioconductor.org/packages/motifStack/) (Ou et al. 2013) it is possible to generate a graphic representation of multiple motifs with different similarity scores.
+
+> 使用生物导体封装Motif Stack（Ou等人，2013），可以生成具有不同相似性分数的多个图案的图形表示。
+
+    library(rGADEM)
+    library(BSgenome.Hsapiens.UCSC.hg19)
+    library(motifStack)
+    library(SummarizedExperiment)
+    library(dplyr)
+
+    probes <- rowRanges(met)[rownames(dmc)[grep("hypo|hyper",dmc$status,ignore.case = TRUE)],]
+
+    # Get hypo/hyper methylated probes and make a 200bp window 
+    # surrounding each probe.
+    sequence <- GRanges(
+      seqnames = as.character(seqnames(probes)),
+      IRanges(
+        start = ranges(probes) %>% as.data.frame() %>% dplyr::pull("start") - 100,
+        end = ranges(probes) %>% as.data.frame() %>% dplyr::pull("end") + 100), 
+      strand = "*"
+    )
+    #look for motifs
+    gadem <- GADEM(sequence, verbose = FALSE, genome = Hsapiens)
+
+top 3 4, 5-mers: 20 40 60 top 3 4, 5-mers: 20 40 60 top 3 4, 5-mers: 20 40 60 top 3 4, 5-mers: 20 40 60
+
+    # How many motifs were found?
+    nMotifs(gadem)
+
+[1] 3
+
+    # get the number of occurrences
+    nOccurrences(gadem)
+
+[1] 268 183 137
+
+    # view all sequences consensus
+    consensus(gadem)
+
+[1] "nGsnGGGGsnGGrGssnGGGs" "nAAAAAnrArAn" "nCCCAGGsmn"
+
+    # Print motif
+    pwm <- getPWM(gadem)
+    pfm  <- new("pfm",mat = pwm[[1]],name = "Novel Site 1")
+    plotMotifLogo(pfm)
+
+    # Number of instances of motif 1?
+    length(gadem@motifList[[1]]@alignList)
+
+[1] 268
+
+## Integrative (Epigenomic & Transcriptomic) analysis 综合分析
+
+Recent studies have shown that providing a deep integrative analysis can aid researchers in identifying and extracting biological insight from high throughput data (Phillips 2008; Shi et al. 2014; Rhodes and Chinnaiyan 2005). In this section, we will introduce a Bioconductor package called [ELMER](http://bioconductor.org/packages/ELMER/) to identify regulatory enhancers using gene expression + DNA methylation data + motif analysis. In addition, we show how to integrate the results from the previous sections with important epigenomic data derived from both the [ENCODE](http://www.encodeproject.org/) and [Roadmap](http://www.roadmapepigenomics.org/).
+
+> 最近的研究表明，提供深度综合分析可以帮助研究人员从高通量数据中识别和提取生物洞察力（Phillips 2008；Shi等人2014；Rhodes和Chinnaiyan 2005）。在本节中，我们将介绍一种称为ELMER的生物导体包，以使用基因表达+DNA甲基化数据+基序分析来识别调控增强子。此外，我们展示了如何将前几节的结果与来自编码和路线图的重要表观基因组数据相结合。
+
+### ChIP-seq analysis **结合位点分析法**
+
+ChIP-seq is used primarily to determine how transcription factors and other chromatin-associated proteins influence phenotype-affecting mechanisms. Determining how proteins interact with DNA to regulate gene expression is essential for fully understanding many biological processes and disease states. The aim is to explore significant overlap datasets for inferring co-regulation or transcription factor complex for further investigation. A summary of the association of each histone mark is shown in the table below.
+
+> ChIP-seq主要用于确定转录因子和其他染色质相关蛋白如何影响表型影响机制。确定蛋白质如何与DNA相互作用以调节基因表达对于充分了解许多生物过程和疾病状态至关重要。目的是探索重要的重叠数据集，以推断共同调节或转录因子复合体，以便进一步研究。每个组蛋白标记的关联总结如下表所示。
+
+| Histone marks                                  | Role                                                                                                    |
+|------------------------------------------------|---------------------------------------------------------------------------------------------------------|
+| Histone H3 lysine 4 trimethylation (H3K4me3)   | Promoter regions (Heintzman et al. 2007, @bernstein2005genomic)                                         |
+| Histone H3 lysine 4 monomethylation (H3K4me1)  | Enhancer regions (Heintzman et al. 2007)                                                                |
+| Histone H3 lysine 36 trimethylation (H3K36me3) | Transcribed regions                                                                                     |
+| Histone H3 lysine 27 trimethylation (H3K27me3) | Polycomb repression (Bonasio, Tu, and Reinberg 2010)                                                    |
+| Histone H3 lysine 9 trimethylation (H3K9me3)   | Heterochromatin regions (Peters et al. 2003)                                                            |
+| Histone H3 acetylated at lysine 27 (H3K27ac)   | Increase activation of genomic elements (Heintzman et al. 2009, @rada2011unique, @creyghton2010histone) |
+| Histone H3 lysine 9 acetylation (H3K9ac)       | Transcriptional activation (Nishida et al. 2006)                                                        |
+
+Besides, ChIP-seq data exists in the ROADMAP database and can be obtained through the [AnnotationHub](http://bioconductor.org/packages/AnnotationHub/) package (T. D. Morgan M Carlson M and S., n.d.) or from [Roadmap web portal](http://egg2.wustl.edu/roadmap/webportal/processed_data.html). The table below shows the description of all the roadmap files that are available through AnnotationHub.
+
+> 此外，芯片序列数据存在于路线图数据库中，可以通过AnnotationHub包（T.D.Morgan M Carlson M and S.，n.D.）或路线图门户网站获得。下表显示了可通过AnnotationHub获得的所有路线图文件的说明。
+
+| File                              | Description                                                           |
+|-----------------------------------|-----------------------------------------------------------------------|
+| fc.signal.bigwig                  | Bigwig File containing fold enrichment signal tracks                  |
+| pval.signal.bigwig                | Bigwig File containing -log10(p-value) signal tracks                  |
+| hotspot.fdr0.01.broad.bed.gz      | Broad domains on enrichment for DNase-seq for consolidated epigenomes |
+| hotspot.broad.bed.gz              | Broad domains on enrichment for DNase-seq for consolidated epigenomes |
+| broadPeak.gz                      | Broad ChIP-seq peaks for consolidated epigenomes                      |
+| gappedPeak.gz                     | Gapped ChIP-seq peaks for consolidated epigenomes                     |
+| narrowPeak.gz                     | Narrow ChIP-seq peaks for consolidated epigenomes                     |
+| hotspot.fdr0.01.peaks.bed.gz      | Narrow DNasePeaks for consolidated epigenomes                         |
+| hotspot.all.peaks.bed.gz          | Narrow DNasePeaks for consolidated epigenomes                         |
+| .macs2.narrowPeak.gz              | Narrow DNasePeaks for consolidated epigenomes                         |
+| coreMarks_mnemonics.bed.gz        | 15 state chromatin segmentations                                      |
+| mCRF_FractionalMethylation.bigwig | MeDIP/MRE(mCRF) fractional methylation calls                          |
+| RRBS_FractionalMethylation.bigwig | RRBS fractional methylation calls                                     |
+| WGBS_FractionalMethylation.bigwig | Whole genome bisulphite fractional methylation calls                  |
+
+After obtaining the ChIP-seq data, we can then identify overlapping regions with the regions identified in the starburst plot. The narrowPeak files are the ones selected for this step. For a complete pipeline with Chip-seq data, Bioconductor provides excellent tutorials to work with ChIP-seq and we encourage our readers to review the following article (Aleksandra Pekowska 2015). The first step is shown in listing below is to download the chip-seq data. The function *query* received as argument the annotationHub database (ah) and a list of keywords to be used for searching the data, *EpigenomeRoadmap* is selecting the roadmap database, *consolidated* is selecting only the consolidate epigenomes, *brain* is selecting the brain samples, E068 is one of the epigenomes for the brain (keywords can be seen in the [summary table](https://docs.google.com/spreadsheets/d/1yikGx4MsO9Ei36b64yOy9Vb6oPC5IBGlFbYEt-N6gOM/edit#gid=15)) and narrowPeak is selecting the type of file. The data downloaded is a processed data from an integrative Analysis of 111 reference human epigenomes (Kundaje et al. 2015).
+
+> 在获得芯片序列数据后，我们可以识别与星爆图中识别的区域重叠的区域。窄峰文件是为此步骤选择的文件。对于包含Chip-seq数据的完整管道，Bioconductor提供了使用Chip-seq的优秀教程，我们鼓励读者阅读以下文章（Aleksandra Pekowska 2015）。第一步如下面的清单所示，是下载chip-seq数据。函数查询作为参数接收到annotationHub数据库（ah）和用于搜索数据的关键字列表，表观基因组LoadMap选择路线图数据库，consolidated仅选择consolidated表观基因组，brain选择大脑样本，E068是大脑的表观基因组之一（关键字可以在总结表中看到），NearoPeak正在选择文件类型。下载的数据是来自111个参考人类表观基因组综合分析的处理数据（Kundaje等人，2015）。
+
+    library(ChIPseeker)
+    library(pbapply)
+    library(ggplot2)
+
+    #------------------ Working with ChipSeq data ---------------
+    # Step 1: download histone marks for a brain and non-brain samples.
+    #------------------------------------------------------------
+    # loading annotation hub database
+    library(AnnotationHub)
+    ah = AnnotationHub()
+
+    # Searching for brain consolidated epigenomes in the roadmap database
+    bpChipEpi_brain <- query(ah , c("EpigenomeRoadMap", "narrowPeak", "chip", "consolidated","brain","E068"))
+    # Get chip-seq data
+    histone.marks <- pblapply(names(bpChipEpi_brain), function(x) {ah[[x]]})
+    names(histone.marks) <- names(bpChipEpi_brain) 
+    # OBS: histone.marks is available in TCGAWorkflowData package
+
+The [Chipseeker](http://bioconductor.org/packages/ChIPseeker/) package (Yu, Wang, and He 2015) implements functions that use Chip-seq data to retrieve the nearest genes around the peak, to annotate genomic region of the peak, among others. Also, it provides several visualization functions to summarize the coverage of the peak, average profile and heatmap of peaks binding to TSS regions, genomic annotation, distance to TSS and overlap of peaks or genes.
+
+> Chipseeker软件包（Yu、Wang和He 2015）实现了使用芯片序列数据检索峰值附近最近的基因、注释峰值基因组区域等功能。此外，它还提供了一些可视化功能，以总结结合到TSS区域的峰的覆盖范围、平均轮廓和热图、基因组注释、到TSS的距离以及峰或基因的重叠。
+
+After downloading the histone marks, it is useful to verify the average profile of peaks binding to hypomethylated and hypermethylated regions, which will help the user understand better the regions found. Listing below shows an example of code to plot the average profile.
+
+> 下载组蛋白标记后，验证结合到低甲基化和高甲基化区域的峰的平均轮廓是有用的，这将帮助用户更好地理解找到的区域。下面的清单显示了绘制平均轮廓的代码示例。
+
+To help the user better understand the regions found in the DMR analysis, we downloaded histone marks specific to brain tissue using the AnnotationHub package that can access the Roadmap database. Next, the Chipseeker was used to visualize how histone modifications are enriched onto hypomethylated and hypermethylated regions, (listing below). The enrichment heatmap and the average profile of peaks binding to those regions.
+
+> 为了帮助用户更好地理解DMR分析中发现的区域，我们使用可以访问路线图数据库的AnnotationHub软件包下载了特定于脑组织的组蛋白标记。接下来，使用Chipseeker可视化组蛋白修饰如何富集到低甲基化和高甲基化区域（如下所示）。富集热图和与这些区域结合的峰值的平均轮廓。
+
+    data(histoneMarks)
+    # Create a GR object based on the hypo/hypermethylated probes.
+    probes <- keepStandardChromosomes(rowRanges(met)[rownames(dmc)[dmc$status %in% c("Hypermethylated in TCGA-GBM", "Hypomethylated in TCGA-GBM")],])
+    # Defining a window of 3kbp - 3kbp_probe_3kbp
+    # to make it work with ChIPseeker package version "1.31.3.900"
+    attributes(probes)$type <- "start_site"
+    attributes(probes)$downstream <- 3000
+    attributes(probes)$upstream <- 3000
+    probes <- GenomicRanges::resize(probes,6001,fix = "center") 
+
+    ### Profile of ChIP peaks binding to TSS regions
+    # First of all, to calculate the profile of ChIP peaks binding to TSS regions, we should
+    # prepare the TSS regions, which are defined as the flanking sequence of the TSS sites.
+    # Then align the peaks that are mapping to these regions and generate the tagMatrix.
+    tagMatrixList <- pbapply::pblapply(histone.marks, function(x) {
+      getTagMatrix(keepStandardChromosomes(x), windows = probes, weightCol = "score")
+    })
+    # change names retrieved with the following command: basename(bpChipEpi_brain$title)
+    names(tagMatrixList) <- c("H3K4me1","H3K4me3", "H3K9ac", "H3K9me3", "H3K27ac",  "H3K27me3", "H3K36me3")
+
+To plot the enrichment heatmap use the function `tagHeatmap`
+
+    tagHeatmap(tagMatrixList, xlim=c(-3000, 3000),color = NULL)
+
+To plot the average profile of peaks binding to those region use `plotAvgProf`:
+
+    p <- plotAvgProf(tagMatrixList, xlim = c(-3000,3000), xlab = "Genomic Region (5'->3', centered on CpG)")
+    # We are centreing in the CpG instead of the TSS. So we'll change the labels manually
+    p <- p + scale_x_continuous(breaks=c(-3000,-1500,0,1500,3000),labels=c(-3000,-1500,"CpG",1500,3000))
+    library(ggthemes)
+    p + theme_few() + scale_colour_few(name="Histone marks") +  guides(colour = guide_legend(override.aes = list(size=4)))
+
+The hypomethylated and hypermethylated regions are enriched for H3K4me3, H3K9ac, H3K27ac, and H3K4me1 which indicates regions of enhancers, promoters and increased activation of genomic elements. However, these regions are associated neither with transcribed regions nor Polycomb repression as the H3K36me3 and H3K27me3 heatmaps do not show an enrichment nearby the position 0, and the average profile also does not show a peak at position 0.
+
+> 低甲基化和高甲基化区域富含H3K4me3、H3K9ac、H3K27ac和H3K4me1，这表明增强子、启动子区域和基因组元件的活性增加。然而，由于H3K36me3和H3K27me3热图在位置0附近未显示富集，并且平均轮廓在位置0处也未显示峰值，因此这些区域与转录区域或多梳抑制无关。
+
+## Enhancer Linking by Methylation/Expression Relationship 通过甲基化/表达关系连接增强子
+
+Recently, many studies suggest that enhancers play a major role as regulators of cell-specific phenotypes leading to alteration in transcriptomes related to diseases (Giorgio et al. 2015; Gröschel et al. 2014; Sur et al. 2012; Lijing Yao, Berman, and Farnham 2015). In order to investigate regulatory enhancers that can be located at long distances upstream or downstream of target genes Bioconductor offer the [Enhancer Linking by Methylation/Expression Relationship (ELMER)](http://bioconductor.org/packages/ELMER/) package. This package is designed to combine DNA methylation and gene expression data from human tissues to infer multi-level cis-regulatory networks. It uses DNA methylation to identify enhancers and correlates their state with the expression of nearby genes to identify one or more transcriptional targets. Transcription factor (TF) binding site analysis of enhancers is coupled with expression analysis of all TFs to infer upstream regulators. This package can be easily applied to TCGA public available cancer datasets and custom DNA methylation and gene expression data sets (L Yao et al. 2015, @ChedraouiSilva148726).
+
+> 最近，许多研究表明增强子作为细胞特异性表型的调节因子发挥着重要作用，导致与疾病相关的转录组的改变（Giorgio等人，2015；Gröschel等人，2014；Sur等人，2012；Lijing Yao、Berman和Farnham，2015）。为了研究可以长距离定位在靶基因上游或下游的调控增强子，生物导体提供了通过甲基化/表达关系（ELMER）包连接的增强子。该软件包旨在结合来自人体组织的DNA甲基化和基因表达数据来推断多级顺式调控网络。它使用DNA甲基化来识别增强子，并将其状态与附近基因的表达相关联，以识别一个或多个转录靶点。增强子的转录因子结合位点分析与所有转录因子的表达分析相结合，以推断上游调节因子。该软件包可以轻松应用于TCGA公共可用的癌症数据集和自定义DNA甲基化和基因表达数据集（L Yao等人，2015，\@ChedraouiSilva148726）。
+
+[ELMER](http://bioconductor.org/packages/ELMER/) analysis have 5 main steps:
+
+1.  Identify distal probes on HM450K or EPIC.
+
+2.  Identification of distal probes with significant differential DNA methylation (i.e. DMCs) in tumor vs. normal samples.
+
+3.  Identification of putative target gene(s) for differentially methylated distal probes.
+
+4.  Identification of enriched motifs within a set of probes in significant probe-gene pairs.
+
+5.  Identification of master regulator Transcription Factors (TF) for each enriched motif.
+
+This section shows how to use ELMER to analyze TCGA data using as example LGG and GBM samples.
+
+> ELMER分析有5个主要步骤：
+>
+> 1.识别HM450K或EPIC上的远端探针。
+>
+> 2.在肿瘤和正常样本中鉴定具有显著差异DNA甲基化（即DMC）的远端探针。
+>
+> 3\. 鉴定差异甲基化远端探针的假定靶基因。
+>
+> 4.在重要探针基因对中的一组探针中鉴定富集基序。
+>
+> 5\. 鉴定每个富集基序的主调节转录因子（TF）。
+>
+> 本节以LGG和GBM样本为例，介绍如何使用ELMER分析TCGA数据。
+
+### Preparing the data for ELMER package 数据预处理
+
+The listing below shows how to use [TCGAbiolinks](http://bioconductor.org/packages/TCGAbiolinks/) (Colaprico et al. 2016) to search, download and prepare the data for the [ELMER](http://bioconductor.org/packages/ELMER/) package. Due to time and memory constraints, we will use in this example only data from 10 LGG patients and 10 GBM patients that have both DNA methylation and gene expression data. These samples are the same used in the previous steps.
+
+> 下面的列表显示了如何使用TCGAbiolinks（Colaprico et al.2016）来搜索、下载和准备ELMER软件包的数据。由于时间和记忆的限制，在本例中，我们将仅使用来自10名LGG患者和10名GBM患者的数据，这些患者同时具有DNA甲基化和基因表达数据。这些样本与前面步骤中使用的相同。
+
+To perform ELMER analyses, we need to populate a **MultiAssayExperiment** with a DNA methylation matrix or **SummarizedExperiment** object from HM450K or EPIC platform; a gene expression matrix or SummarizedExperiment object for the same samples; a matrix mapping DNA methylation samples to gene expression samples; and a matrix with sample metadata (i.e. clinical data, molecular subtype, etc.). If TCGA data are used, the last two matrices will be automatically generated. If using non-TCGA data, the matrix with sample metadata should be provided with at least a column with a patient identifier and another one identifying its group which will be used for analysis, if samples in the methylation and expression matrices are not ordered and with same names, a matrix mapping for each patient identifier their DNA methylation samples and their gene expression samples should be provided to the *createMAE* function. Based on the genome of reference selected, metadata for the DNA methylation probes, such as genomic coordinates, will be added from [InfiniumMethylation BeadChips Annotation](http://zwdzwd.github.io/InfiniumAnnotation) (Zhou, Laird, and Shen 2016); and metadata for gene expression and annotation is added from Ensembl database (Yates et al. 2015) using [biomaRt](http://bioconductor.org/packages/biomaRt/) (Durinck et al. 2009).
+
+> 为了进行ELMER分析，我们需要使用DNA甲基化矩阵或来自HM450K或EPIC平台的SummaredExperiment对象填充多分析实验；相同样本的基因表达矩阵或摘要实验对象；将DNA甲基化样本映射到基因表达样本的矩阵；以及包含样本元数据（即临床数据、分子亚型等）的矩阵。如果使用TCGA数据，将自动生成最后两个矩阵。如果使用非TCGA数据，如果甲基化和表达矩阵中的样本未排序且名称相同，则应为具有样本元数据的矩阵提供至少一列，该列带有患者标识符，另一列用于识别其将用于分析的组，每个患者标识符的矩阵映射-他们的DNA甲基化样本和基因表达样本应提供给createMAE功能。基于选择的参考基因组，将从InfiniumMethylation BeadChips注释中添加DNA甲基化探针的元数据，如基因组坐标（Zhou、Laird和Shen 2016）；使用biomaRt（Durinck等人，2009），从Ensembl数据库（Yates等人，2015）中添加了基因表达和注释的元数据。
+
+    #----------- 8.3 Identification of Regulatory Enhancers   -------
+    library(TCGAbiolinks)
+    # Samples: primary solid tumor w/ DNA methylation and gene expression
+    lgg.samples <- matchedMetExp("TCGA-LGG", n = 10)
+    gbm.samples <- matchedMetExp("TCGA-GBM", n = 10)
+    samples <- c(lgg.samples,gbm.samples)
+
+    #-----------------------------------
+    # 1 - Methylation
+    # ----------------------------------
+    query.met <- GDCquery(
+      project = c("TCGA-LGG","TCGA-GBM"),
+      data.category = "DNA methylation",
+      platform = "Illumina Human Methylation 450",
+      legacy = TRUE, 
+      barcode = samples
+    )
+    GDCdownload(query.met)
+    met <- GDCprepare(query.met, save = FALSE)
+    met <- subset(met,subset = as.character(GenomicRanges::seqnames(met)) %in% c("chr9"))
+
+    #-----------------------------------
+    # 2 - Expression
+    # ----------------------------------
+    query.exp <- GDCquery(
+      project = c("TCGA-LGG","TCGA-GBM"),
+      data.category = "Gene expression",
+      data.type = "Gene expression quantification",
+      platform = "Illumina HiSeq", 
+      file.type  = "results", 
+      legacy = TRUE, 
+      barcode =  samples
+    )
+    GDCdownload(query.exp)
+    exp <- GDCprepare(query.exp, save = FALSE)
+    save(exp, met, gbm.samples, lgg.samples, file = "elmer.example.rda", compress = "xz")
+
+Probes from HumanMethylationEPIC (EPIC) array and Infinium HumanMethylation450 (HM450) array are removed from the analysis if they have either internal SNPs close to the 3′ end of the probe; non-unique mapping to the bisulfite-converted genome; or off-target hybridization due to partial overlap with non-unique elements (Zhou, Laird, and Shen 2017). This probe metadata information is included in [ELMER.data](https://github.com/tiagochst/ELMER.data) package, populated from the source file at [InfiniumMethylation BeadChips Annotation](http://zwdzwd.github.io/InfiniumAnnotation) (Zhou, Laird, and Shen 2017). To limit ELMER to the analysis of distal elements, probes located in regions of ±2kb around transcription start sites (TSSs) were removed. The distal elements are retrieved using the *get.feature.probe* function.
+
+> 如果来自人类甲基化PIC（EPIC）阵列和Infinium人类甲基化450（HM450）阵列的探针具有接近探针3′端的任何一个内部SNP，则从分析中删除；亚硫酸氢盐转化基因组的非唯一定位；或由于与非独特元素部分重叠而导致的脱靶杂交（周、莱尔德和沈2017）。此探测器元数据信息包含在ELMER中。数据包，从InfiniumMethylation BeadChips注释的源文件填充（周、莱尔德和沈2017）。为了限制ELMER对远端元件的分析，去除了位于转录起始位点（TSS）周围±2kb区域的探针。使用获取特征探针功能检索远端元素。
+
+    library(ELMER)
+    library(MultiAssayExperiment)
+    library(GenomicRanges)
+    distal.probes <- get.feature.probe(genome = "hg19", 
+                                       met.platform = "450K")
+
+    # Recover the data created in the last step
+    data(elmerExample)
+    rownames(exp) <- values(exp)$ensembl_gene_id
+    mae <- createMAE(
+      exp = assay(exp), 
+      met = met,
+      save = TRUE,
+      linearize.exp = TRUE,
+      save.filename = "mae.rda",
+      filter.probes = distal.probes,
+      met.platform = "450K",
+      genome = "hg19",
+      TCGA = TRUE
+    )
+    mae
+
+    ## A MultiAssayExperiment object of 2 listed
+    ##  experiments with user-defined names and respective classes.
+    ##  Containing an ExperimentList class object of length 2:
+    ##  [1] DNA methylation: RangedSummarizedExperiment with 2970 rows and 20 columns
+    ##  [2] Gene expression: RangedSummarizedExperiment with 20153 rows and 20 columns
+    ## Functionality:
+    ##  experiments() - obtain the ExperimentList instance
+    ##  colData() - the primary/phenotype DataFrame
+    ##  sampleMap() - the sample coordination DataFrame
+    ##  `$`, `[`, `[[` - extract colData columns, subset, or experiment
+    ##  *Format() - convert into a long or wide DataFrame
+    ##  assays() - convert ExperimentList to a SimpleList of matrices
+    ##  exportClass() - save data to flat files
+
+## ELMER analysis
+
+After preparing the data into an MAE object, we executed the five [ELMER](http://bioconductor.org/packages/ELMER/) steps for the hypo direction, which means where are searching for distal enhancer probes hypomethylated in the GBM group compared to the LGG group. The code is shown below. A description of how these distal enhancer probes are identified is found in the [ELMER.data](https://bioconductor.org/packages/release/data/experiment/vignettes/ELMER.data/inst/doc/vignettes.pdf) vignette. As the number of samples is small we loosened some of the cut-off values.
+
+> 在将数据准备到MAE对象中后，我们对低甲基化方向执行了五个ELMER步骤，这意味着与LGG组相比，在GBM组中搜索低甲基化的远端增强子探针的位置。代码如下所示。关于如何识别这些远端增强子探针的描述见ELMER.数据渐晕图。由于样本数量较少，我们放宽了一些截止值。
+
+    cores <- 1 # you can use more cores if you want
+    group.col <- "project_id"
+    group1 <- "TCGA-GBM"
+    group2 <- "TCGA-LGG"
+
+    # Available directions are hypo and hyper, we will use only hypo
+    # due to speed constraint
+    direction <- "hypo"
+    dir.out <- paste0("elmer/",direction)
+    dir.create(dir.out, showWarnings = FALSE, recursive = TRUE)
+
+### Supervised and unsupervised analysis mode
+
+ELMER is designed to identify differences between two sets of samples within a given dataset. But, before we start our analysis, it is better to understand the two analysis mode available in ELMER 2.0 (supervised and unsupervised mode) which affects how the samples are selected for each comparison.
+
+> ELMER旨在识别给定数据集中两组样本之间的差异。但是，在我们开始分析之前，最好了解ELMER 2.0中可用的两种分析模式（监督和非监督模式），这会影响每次比较如何选择样本
+
+In original version (L Yao et al. 2015), the first step - identification of differentially methylated CpG probes (DMCs) - was hard-coded to identify DMCs between non-cancer vs. cancer samples, and the subsequent step was unsupervised, identifying changes within any subset of tumors. In ELMER 2.0, we generalize these strategies so that they are applicable to any paired dataset, including disease vs. healthy tissue for any disease type.
+
+> 在最初的版本中（L Yao等人，2015年），第一步-差异甲基化CpG探针（DMC）的识别-被硬编码以识别非癌症和癌症样本之间的DMC，随后的步骤是无监督的，识别任何肿瘤子集内的变化。在ELMER 2.0中，我们概括了这些策略，使其适用于任何配对数据集，包括任何疾病类型的疾病与健康组织。
+
+In the Unsupervised mode, as in ELMER 1.0, it is assumed that at least one of our groups is heterogenous (i.e Breast Invasive Carcinoma primary solid tumors samples might belong to basal,Luminal A, Her2 molecular subtypes), for that reason for each comparison samples from two most extreme quintiles based on DNA methylation levels were used, generating both the M (methylated) and the U (unmethylated) groups. In the Supervised mode, it is assumed that our groups are homogenous, for that reason the U and M groups are defined strictly by sample group labels, and all samples in each group are used (Silva et al. 2018).
+
+> 在无监督模式下，如ELMER 1.0中，假设我们的组中至少有一个是异质性的（即乳腺浸润癌原发性实体瘤样本可能属于基底、管腔A、Her2分子亚型），因此使用了基于DNA甲基化水平的两个最极端五分位的每个比较样本，生成M（甲基化）和U（非甲基化）基团。在监督模式下，假设我们的组是同质的，因此U组和M组严格由样本组标签定义，并使用每个组中的所有样本（Silva等人，2018）。
+
+The next steps we will perform ELMER analysis using the supervised mode, which will use all samples from GBM and compare to all LGG samples in all analysis.
+
+> 接下来，我们将使用监督模式执行ELMER分析，该模式将使用GBM中的所有样本，并与所有分析中的所有LGG样本进行比较。
+
+### Identification of differentially methylated CpGs (DMCs)
+
+For each distal probe, samples of each group (group 1 and group 2) are ranked by their DNA methylation beta values, those samples in the lower quintile (20% samples with the lowest methylation levels) of each group are used to identify if the probe is hypomethylated in group 1 compared to group 2, using an unpaired one-tailed t-test. The 20% is a parameter to the *diff.meth* function called *minSubgroupFrac*. For the (ungrouped) cancer case, this is set to 20% as in (L Yao et al. 2015), because we typically wanted to be able to detect a specific molecular subtype among the tumor samples; these subtypes often make up only a minority of samples, and 20% was chosen as a lower bound for the purposes of statistical power (high enough sample numbers to yield t-test p-values that could overcome multiple hypothesis corrections, yet low enough to be able to capture changes in individual molecular subtypes occurring in 20% or more of the cases.) This number can be set arbitrarily as an input to the *diff.meth* function and should be tuned based on sample sizes in individual studies.
+
+> 对于每个远端探针，每组（第1组和第2组）的样本按其DNA甲基化β值排序，每组低五分位（20%的样本具有最低的甲基化水平）的样本用于使用非配对单尾t检验确定第1组与第2组中的探针是否低甲基化。20%是差异的一个参数。meth函数称为minSubgroupFrac。对于（未分组的）癌症病例，如（L Yao等人，2015年）所示，这一比例设置为20%，因为我们通常希望能够检测肿瘤样本中的特定分子亚型；这些亚型通常仅占样本的少数，出于统计功效的目的，选择20%作为下限（足够高的样本数以产生可以克服多个假设校正的t检验p值，但足够低，能够捕捉20%或更多病例中发生的单个分子亚型的变化。)该数字可以任意设置为差速器的输入。meth函数，并应根据个别研究中的样本量进行调整。
+
+As we are dealing with a low number of samples, and we are comparing two cancer types the *minSubgroupFrac* parameter is set to 100% to use all samples in this analysis.
+
+    #--------------------------------------
+    # STEP 3: Analysis                     |
+    #--------------------------------------
+    # Step 3.1: Get diff methylated probes |
+    #--------------------------------------
+    message("Get diff methylated probes")
+    Sig.probes <- get.diff.meth(
+      data = mae, 
+      group.col = group.col,
+      group1 = group1,
+      group2 =  group2,
+      minSubgroupFrac = 1.0, # Use all samples
+      sig.dif = 0.2, # defualt is 0.3
+      diff.dir = direction, # Search for hypomethylated probes in group 1
+      cores = cores, 
+      dir.out = dir.out, 
+      pvalue = 0.1
+    )
+
+    datatable(
+      data = Sig.probes[1:10,], 
+      options = list(scrollX = TRUE, keys = TRUE, pageLength = 5), 
+      rownames = TRUE
+    )
+
+Show 5102550100 entries
+
+Search:
+
+|     | probe | pvalue | TCGA.GBM_Minus_TCGA.LGG | adjust.p |
+|-----|-------|--------|-------------------------|----------|
+
+|            |            |                      |                    |                     |
+|------------|------------|----------------------|--------------------|---------------------|
+| cg00049440 | cg00049440 | 0.00086154757280685  | -0.373867176296589 | 0.0177705989765508  |
+| cg00352576 | cg00352576 | 0.000294163197999422 | -0.320305029234548 | 0.0106544475372961  |
+| cg00378292 | cg00378292 | 0.000177295158224942 | -0.264192242388568 | 0.00855595829703377 |
+| cg00423675 | cg00423675 | 0.000301092329321868 | -0.318102222574598 | 0.0107617840695654  |
+| cg00470505 | cg00470505 | 0.0017670097695281   | -0.250379512824719 | 0.0246851329162317  |
+
+Showing 1 to 5 of 10 entries
+
+Previous12Next
+
+### Identification of putative target gene(s) for differentially methylated distal probes
+
+For each differentially methylated distal probe (DMC), the closest 10 upstream genes and the closest 10 downstream genes are tested for inverse correlation between methylation of the probe and expression of the gene (the number 10 can be changed using the *numFlankingGenes* parameter). To select these genes, the probe-gene distance is defined as the distance from the probe to the transcription start site specified by the ENSEMBL gene level annotations (Yates et al. 2015) accessed via the R/Bioconductor package [biomaRt](http://bioconductor.org/packages/biomaRt/) (Durinck et al. 2009, @durinck2005biomart). By choosing a constant number of genes to test for each probe, our goal is to avoid systematic false positives for probes in gene-rich regions. This is especially important given the highly non-uniform gene density of mammalian genomes. Thus, exactly 20 statistical tests were performed for each probe, as follows.
+
+> 对于每个差异甲基化远端探针（DMC），测试最接近的10个上游基因和最接近的10个下游基因的探针甲基化与基因表达之间的反向相关性（数字10可以使用numFlankingGenes参数更改）。为了选择这些基因，探针基因距离被定义为从探针到ENSEMBL基因水平注释（Yates等人，2015）指定的转录起始位点的距离，该注释通过R/Bioconductor包biomaRt（Durinck等人，2009，\@durinck2005biomart）访问。通过为每个探针选择恒定数量的基因进行测试，我们的目标是避免在基因丰富区域的探针出现系统性假阳性。鉴于哺乳动物基因组的基因密度高度不均匀，这一点尤为重要。因此，对每个探针进行了20次统计测试，如下所示。
+
+For each probe-gene pair, the samples (all samples from both groups) are divided into two groups: the M group, which consisted of the upper methylation quintile (the 20% of samples with the highest methylation at the enhancer probe), and the U group, which consists of the lowest methylation quintile (the 20% of samples with the lowest methylation.) The 20% ile cutoff is a configurable parameter *minSubgroupFrac* in the *get.pair* function. As with its usage in the *diff.meth* function, the default value of 20% is a balance, allowing for the identification of changes in a molecular subtype making up a minority (i.e. 20%) of cases, while also yielding enough statistical power to make strong predictions. For larger sample sizes or other experimental designs, this could be set even lower.
+
+> 对于每个探针基因对，样本（来自两个组的所有样本）分为两组：M组，由高甲基化五分位（增强子探针处甲基化最高的样本的20%）组成，U组，由最低甲基化五分位（甲基化最低的样本的20%）组成。)20%ile截止值是get.pair函数中的一个可配置参数minSubgroupFrac。正如它在diff中的用法一样。meth函数，默认值20%是一个平衡，允许识别构成少数（即20%）病例的分子亚型的变化，同时也产生足够的统计能力来进行强有力的预测。对于较大的样本量或其他实验设计，可以将其设置得更低。
+
+For each candidate probe-gene pair, the Mann-Whitney U test is used to test the null hypothesis that overall gene expression in group M is greater than or equal than that in group U. This non-parametric test was used in order to minimize the effects of expression outliers, which can occur across a very wide dynamic range. For each probe-gene pair tested, the raw p-value Pr is corrected for multiple hypothesis using a permutation approach as follows. The gene in the pair is held constant, and *x* random methylation probes are chosen to perform the same one-tailed U test, generating a set of *x* permutation p-values Pp. We chose the x random probes only from among those that were "distal" (farther than 2kb from an annotated transcription start site), in order to draw these null-model probes from the same set as the probe being tested (**???**). An empirical p-value Pe value was calculated using the following formula (which introduces a pseudo-count of 1):
+
+Pe=num(Pp≤Pr)+1x+1
+
+> 对于每个候选探针基因对，使用Mann-Whitney U检验来检验零假设，即M组中的整体基因表达大于或等于U组中的整体基因表达。该非参数检验用于最小化表达异常值的影响，这些异常值可能发生在非常宽的动态范围内。对于测试的每个探针基因对，使用排列方法针对多个假设校正原始p值Pr，如下所示。配对中的基因保持不变，选择x随机甲基化探针进行相同的单尾U检验，生成一组x置换p值。我们仅从那些"远端"（距离注释转录起始位点超过2kb）的探针中选择x随机探针，以便从与被测试探针相同的集合中提取这些零模型探针（？？？）。
+
+Notice that in the *Supervised* mode, no additional filtering is necessary to ensure that the M and U group segregate by sample group labels. The two sample groups are segregated by definition, since these probes were selected for their differential methylation, with the same directionality, between the two groups.
+
+> 注意，在监督模式下，无需额外过滤以确保M组和U组按样本组标签分离。这两个样本组根据定义进行分离，因为选择这些探针是为了在两组之间具有相同方向性的差异甲基化。
+
+In our example, we will reduce the number of closest genes evaluated to 5 (the 2 closest upstream genes and the closest 2 downstream genes). The *mode* is set to "supervised" which will set group 1 (GBM samples) as the U group, and the group 2 (LGG samples) as M group. Also, to make the example faster, the number of permutation is reduced to 5 (*permu.size* = 5), the raw p-value cut-off is loosened to 0.1 and the empirical p-value to 0.5, but it is recommended in a real analysis to use the default values.
+
+在我们的示例中，我们将最接近的基因数减少到5个（最接近的2个上游基因和最接近的2个下游基因）。模式设置为"监督"，将第1组（GBM样本）设置为U组，第2组（LGG样本）设置为M组。此外，为了使示例更快，置换的数量减少到5（置换大小=5），原始p值截止值放宽到0.1，经验p值放宽到0.5，但在实际分析中建议使用默认值。
+
+    #-------------------------------------------------------------
+    # Step 3.2: Identify significant probe-gene pairs            |
+    #-------------------------------------------------------------
+    # Collect nearby 20 genes for Sig.probes
+    message("Get nearby genes")
+    nearGenes <- GetNearGenes(
+      data = mae,
+      numFlankingGenes = 4, # default is 20 genes
+      probes = Sig.probes$probe
+    )
+
+    length(Sig.probes$probe)
+
+    ## [1] 293
+
+    dim(nearGenes)
+
+    ## [1] 1172    5
+
+    head(nearGenes)
+
+| ID         | GeneID          | Symbol   | Distance | Side |
+|------------|-----------------|----------|----------|------|
+| cg00049440 | ENSG00000198887 | SMC5     | -56838   | L2   |
+| cg00049440 | ENSG00000119138 | KLF9     | 0        | L1   |
+| cg00049440 | ENSG00000083067 | TRPM3    | 117335   | R1   |
+| cg00049440 | ENSG00000135048 | TMEM2    | 1271638  | R2   |
+| cg00352576 | ENSG00000188523 | C9orf171 | -5492    | L2   |
+| cg00352576 | ENSG00000125492 | BARHL1   | 3374     | L1   |
+
+    message("Get anti correlated probes-genes")
+    pair <- get.pair(
+      data = mae,
+      group.col = group.col,
+      group1 = group1,
+      group2 =  group2,
+      nearGenes = nearGenes,
+      mode = "supervised",
+      minSubgroupFrac = 1, # % of samples to use in to create groups U/M
+      raw.pvalue = 0.1,   # defualt is 0.001
+      Pe = 0.5, # Please set to 0.001 to get significant results
+      filter.probes = TRUE, # See preAssociationProbeFiltering function
+      filter.percentage = 0.05,
+      save = FALSE, # Create CVS file
+      filter.portion = 0.3,
+      dir.out = dir.out,
+      diff.dir = direction,
+      cores = cores,
+      label = direction
+    )
+
+    datatable(
+      pair[1:10,], 
+      options = list(scrollX = TRUE, keys = TRUE, pageLength = 5), 
+      rownames = TRUE
+    )
+
+Show 5102550100 entries
+
+Search:
+
+|     | Probe | GeneID | Symbol | Distance | Sides | Raw.p | FDR |
+|-----|-------|--------|--------|----------|-------|-------|-----|
+
+|                            |            |                 |        |        |     |                      |                    |
+|----------------------------|------------|-----------------|--------|--------|-----|----------------------|--------------------|
+| cg13449257.ENSG00000130635 | cg13449257 | ENSG00000130635 | COL5A1 | 178491 | R1  | 0.000164066657410071 | 0.0015996499097482 |
+| cg13595495.ENSG00000130635 | cg13595495 | ENSG00000130635 | COL5A1 | 254207 | R1  | 0.000164066657410071 | 0.0015996499097482 |
+| cg14051721.ENSG00000130635 | cg14051721 | ENSG00000130635 | COL5A1 | 232310 | R1  | 0.000164066657410071 | 0.0015996499097482 |
+| cg14113739.ENSG00000130635 | cg14113739 | ENSG00000130635 | COL5A1 | 0      | L1  | 0.000164066657410071 | 0.0015996499097482 |
+| cg14121282.ENSG00000130635 | cg14121282 | ENSG00000130635 | COL5A1 | 265545 | R1  | 0.000164066657410071 | 0.0015996499097482 |
+
+Showing 1 to 5 of 10 entries
+
+Previous12Next
+
+### Motif enrichment analysis
+
+To identify enriched motifs and potential upstream regulatory TFs, HOCOMOCO v11 (Kulakovskiy et al. 2016) TF binding models were used as input for HOMER (Heinz et al. 2010) to find motif occurrences in a ±250bp region around each probe from EPIC and HM450 arrays. Transcription factor (TF) binding models are available at <http://hocomoco.autosome.ru/downloads> (using the HOMER specific format with threshold score levels corresponding to p-value \>1−4).
+
+> 为了识别丰富的基序和潜在的上游调节TF，Hocomico v11（Kulakovskiy等人，2016）TF结合模型被用作HOMER（Heinz等人，2010）的输入，以发现EPIC和HM450阵列中每个探针周围±250bp区域中的基序出现。转录因子（TF）结合模型可在[http://hocomoco.autosome.ru/downloads（使用荷马特定格式，阈值分数水平对应于p值](http://hocomoco.autosome.ru/downloads（使用荷马特定格式，阈值分数水平对应于p值)1−4).
+
+A motif enrichment analysis using Fisher's exact test and Benjamini-Hochberg multiple hypothesis testing correction is performed using as correction background all distal probes.
+
+> 使用Fisher精确检验和Benjamini-Hochberg多假设检验校正的基序富集分析使用所有远端探针作为校正背景。
+
+A probe set was considered significantly enriched for a particular motif if the 95% confidence interval of the Odds Ratio was greater than 1.1 (specified by option *lower.OR*, 1.1 is default), and the motif occurred at least 10 times (specified by option *min.incidence*, 10 is default) in the probe set.
+
+> 如果比值比的95%置信区间大于1.1（由option lower指定，或默认值为1.1），并且在探针集中，基序至少出现10次（由option min.incidence指定，默认值为10），则探针集被视为显著丰富了特定基序。
+
+    #-------------------------------------------------------------
+    # Step 3.3: Motif enrichment analysis on the selected probes |
+    #-------------------------------------------------------------
+    enriched.motif <- get.enriched.motif(
+      data = mae,
+      probes = pair$Probe, 
+      dir.out = dir.out, 
+      label = direction,
+      pvalue = 1, # default is FDR < 0.05
+      min.incidence = 10,
+      lower.OR = 1.1
+    )
+    # One of the output from the  previous function is a file with the motif, OR and Number of probes
+    # It will be used for plotting purposes
+    motif.enrichment <- read.csv(paste0(dir.out,"/getMotif.",direction, ".motif.enrichment.csv"))
+
+    head(enriched.motif[names(enriched.motif)[1]]) ## probes in the given set that have the first motif.
+
+    ## $ZN524_HUMAN.H11MO.0.D
+    ##  [1] "cg13787850" "cg14159539" "cg13857678" "cg13493766" "cg02602455"
+    ##  [6] "cg14560364" "cg13562069" "cg26787801" "cg14262955" "cg14121282"
+    ## [11] "cg13663116" "cg21210721" "cg12819393" "cg14186948" "cg14223856"
+    ## [16] "cg00505502" "cg13753488" "cg10962166" "cg13595495" "cg14567085"
+    ## [21] "cg26756625" "cg04681525" "cg14061378" "cg19264651" "cg00938819"
+    ## [26] "cg14103872" "cg03916189" "cg13512951" "cg06752260"
+
+    motif.enrichment %>% head %>% gt::gt()
+
+| motif                 | NumOfProbes | PercentageOfProbes | lowerOR  | upperOR  | OR       | p.value     | FDR       | TF.family                                       | TF.subfamily                  | TF.family.member                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           | TF.subfamily.member |
+|-----------------------|-------------|--------------------|----------|----------|----------|-------------|-----------|-------------------------------------------------|-------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|---------------------|
+| ZN524_HUMAN.H11MO.0.D | 29          | 0.4328358          | 1.541492 | 4.388220 | 2.613054 | 0.000195495 | 0.1507267 | More than 3 adjacent zinc finger factors{2.3.3} | ZNF524-like factors{2.3.3.15} | BCL6;BCL6B;CTCF;CTCFL;FEZF1;FEZF2;GFI1;GFI1B;GLI1;GLI2;GLI3;GLI4;GLIS1;GLIS2;GLIS3;HKR1;MTF1;MYNN;MZF1;OSR2;OVOL1;OVOL2;PLAG1;PLAGL1;PLAGL2;PRDM1;PRDM14;PRDM6;SCRT1;SCRT2;SNAI1;SNAI2;SNAI3;WT1;YY1;YY2;ZBTB12;ZBTB14;ZBTB18;ZBTB20;ZBTB26;ZBTB42;ZBTB45;ZBTB47;ZBTB48;ZBTB49;ZBTB6;ZBTB7A;ZBTB7B;ZBTB7C;ZFP14;ZFP2;ZFP28;ZFP30;ZFP37;ZFP42;ZFP64;ZFP69;ZFP69B;ZFP82;ZFP91;ZFX;ZIC1;ZIC2;ZIC3;ZIC4;ZIC5;ZIK1;ZIM3;ZKSCAN1;ZKSCAN2;ZKSCAN3;ZKSCAN4;ZNF121;ZNF124;ZNF133;ZNF136;ZNF138;ZNF14;ZNF140;ZNF143;ZNF146;ZNF148;ZNF155;ZNF157;ZNF160;ZNF169;ZNF175;ZNF177;ZNF18;ZNF180;ZNF181;ZNF2;ZNF20;ZNF212;ZNF213;ZNF214;ZNF221;ZNF222;ZNF223;ZNF224;ZNF225;ZNF226;ZNF227;ZNF229;ZNF230;ZNF232;ZNF233;ZNF234;ZNF235;ZNF24;ZNF25;ZNF250;ZNF257;ZNF26;ZNF260;ZNF263;ZNF264;ZNF268;ZNF274;ZNF276;ZNF28;ZNF280A;ZNF280B;ZNF280C;ZNF280D;ZNF281;ZNF282;ZNF283;ZNF284;ZNF285;ZNF286A;ZNF286B;ZNF3;ZNF30;ZNF300;ZNF302;ZNF317;ZNF32;ZNF320;ZNF322;ZNF324;ZNF324B;ZNF329;ZNF331;ZNF333;ZNF33A;ZNF33B;ZNF343;ZNF345;ZNF347;ZNF350;ZNF354A;ZNF354B;ZNF362;ZNF366;ZNF383;ZNF384;ZNF394;ZNF397;ZNF398;ZNF404;ZNF41;ZNF410;ZNF419;ZNF420;ZNF431;ZNF432;ZNF436;ZNF439;ZNF44;ZNF440;ZNF442;ZNF443;ZNF446;ZNF449;ZNF45;ZNF460;ZNF468;ZNF479;ZNF484;ZNF490;ZNF500;ZNF502;ZNF524;ZNF525;ZNF528;ZNF543;ZNF544;ZNF546;ZNF547;ZNF548;ZNF549;ZNF554;ZNF555;ZNF557;ZNF558;ZNF559;ZNF561;ZNF562;ZNF563;ZNF564;ZNF566;ZNF567;ZNF568;ZNF57;ZNF570;ZNF571;ZNF572;ZNF577;ZNF581;ZNF582;ZNF583;ZNF585A;ZNF586;ZNF589;ZNF595;ZNF599;ZNF600;ZNF605;ZNF607;ZNF611;ZNF613;ZNF614;ZNF615;ZNF616;ZNF619;ZNF620;ZNF621;ZNF625;ZNF627;ZNF649;ZNF652;ZNF653;ZNF665;ZNF667;ZNF669;ZNF670;ZNF672;ZNF679;ZNF680;ZNF683;ZNF689;ZNF692;ZNF701;ZNF705D;ZNF705E;ZNF705G;ZNF708;ZNF709;ZNF71;ZNF710;ZNF713;ZNF721;ZNF727;ZNF729;ZNF736;ZNF75A;ZNF75D;ZNF76;ZNF763;ZNF764;ZNF765;ZNF768;ZNF77;ZNF771;ZNF773;ZNF774;ZNF776;ZNF777;ZNF780A;ZNF780B;ZNF782;ZNF785;ZNF799;ZNF805;ZNF808;ZNF81;ZNF813;ZNF816;ZNF823;ZNF829;ZNF836;ZNF841;ZNF844;ZNF845;ZNF846;ZNF85;ZNF853;ZNF860;ZNF878;ZNF891;ZNF99;ZSCAN16;ZSCAN2;ZSCAN22;ZSCAN23;ZSCAN29;ZSCAN31;ZSCAN32;ZSCAN4;ZSCAN5A;ZSCAN5B;ZSCAN5C;ZSCAN9;ZXDA;ZXDB;ZXDC | ZNF524              |
+| PLAL1_HUMAN.H11MO.0.D | 35          | 0.5223881          | 1.376611 | 3.871557 | 2.305002 | 0.000867196 | 0.1752714 | More than 3 adjacent zinc finger factors{2.3.3} | PLAG factors{2.3.3.25}        | BCL6;BCL6B;CTCF;CTCFL;FEZF1;FEZF2;GFI1;GFI1B;GLI1;GLI2;GLI3;GLI4;GLIS1;GLIS2;GLIS3;HKR1;MTF1;MYNN;MZF1;OSR2;OVOL1;OVOL2;PLAG1;PLAGL1;PLAGL2;PRDM1;PRDM14;PRDM6;SCRT1;SCRT2;SNAI1;SNAI2;SNAI3;WT1;YY1;YY2;ZBTB12;ZBTB14;ZBTB18;ZBTB20;ZBTB26;ZBTB42;ZBTB45;ZBTB47;ZBTB48;ZBTB49;ZBTB6;ZBTB7A;ZBTB7B;ZBTB7C;ZFP14;ZFP2;ZFP28;ZFP30;ZFP37;ZFP42;ZFP64;ZFP69;ZFP69B;ZFP82;ZFP91;ZFX;ZIC1;ZIC2;ZIC3;ZIC4;ZIC5;ZIK1;ZIM3;ZKSCAN1;ZKSCAN2;ZKSCAN3;ZKSCAN4;ZNF121;ZNF124;ZNF133;ZNF136;ZNF138;ZNF14;ZNF140;ZNF143;ZNF146;ZNF148;ZNF155;ZNF157;ZNF160;ZNF169;ZNF175;ZNF177;ZNF18;ZNF180;ZNF181;ZNF2;ZNF20;ZNF212;ZNF213;ZNF214;ZNF221;ZNF222;ZNF223;ZNF224;ZNF225;ZNF226;ZNF227;ZNF229;ZNF230;ZNF232;ZNF233;ZNF234;ZNF235;ZNF24;ZNF25;ZNF250;ZNF257;ZNF26;ZNF260;ZNF263;ZNF264;ZNF268;ZNF274;ZNF276;ZNF28;ZNF280A;ZNF280B;ZNF280C;ZNF280D;ZNF281;ZNF282;ZNF283;ZNF284;ZNF285;ZNF286A;ZNF286B;ZNF3;ZNF30;ZNF300;ZNF302;ZNF317;ZNF32;ZNF320;ZNF322;ZNF324;ZNF324B;ZNF329;ZNF331;ZNF333;ZNF33A;ZNF33B;ZNF343;ZNF345;ZNF347;ZNF350;ZNF354A;ZNF354B;ZNF362;ZNF366;ZNF383;ZNF384;ZNF394;ZNF397;ZNF398;ZNF404;ZNF41;ZNF410;ZNF419;ZNF420;ZNF431;ZNF432;ZNF436;ZNF439;ZNF44;ZNF440;ZNF442;ZNF443;ZNF446;ZNF449;ZNF45;ZNF460;ZNF468;ZNF479;ZNF484;ZNF490;ZNF500;ZNF502;ZNF524;ZNF525;ZNF528;ZNF543;ZNF544;ZNF546;ZNF547;ZNF548;ZNF549;ZNF554;ZNF555;ZNF557;ZNF558;ZNF559;ZNF561;ZNF562;ZNF563;ZNF564;ZNF566;ZNF567;ZNF568;ZNF57;ZNF570;ZNF571;ZNF572;ZNF577;ZNF581;ZNF582;ZNF583;ZNF585A;ZNF586;ZNF589;ZNF595;ZNF599;ZNF600;ZNF605;ZNF607;ZNF611;ZNF613;ZNF614;ZNF615;ZNF616;ZNF619;ZNF620;ZNF621;ZNF625;ZNF627;ZNF649;ZNF652;ZNF653;ZNF665;ZNF667;ZNF669;ZNF670;ZNF672;ZNF679;ZNF680;ZNF683;ZNF689;ZNF692;ZNF701;ZNF705D;ZNF705E;ZNF705G;ZNF708;ZNF709;ZNF71;ZNF710;ZNF713;ZNF721;ZNF727;ZNF729;ZNF736;ZNF75A;ZNF75D;ZNF76;ZNF763;ZNF764;ZNF765;ZNF768;ZNF77;ZNF771;ZNF773;ZNF774;ZNF776;ZNF777;ZNF780A;ZNF780B;ZNF782;ZNF785;ZNF799;ZNF805;ZNF808;ZNF81;ZNF813;ZNF816;ZNF823;ZNF829;ZNF836;ZNF841;ZNF844;ZNF845;ZNF846;ZNF85;ZNF853;ZNF860;ZNF878;ZNF891;ZNF99;ZSCAN16;ZSCAN2;ZSCAN22;ZSCAN23;ZSCAN29;ZSCAN31;ZSCAN32;ZSCAN4;ZSCAN5A;ZSCAN5B;ZSCAN5C;ZSCAN9;ZXDA;ZXDB;ZXDC | PLAG1;PLAGL1        |
+| ELF2_HUMAN.H11MO.0.C  | 30          | 0.4477612          | 1.375399 | 3.893725 | 2.322729 | 0.001055975 | 0.1752714 | Ets-related factors{3.5.2}                      | Elf-1-like factors{3.5.2.3}   | EHF;ELF1;ELF2;ELF3;ELF4;ELF5;ELK1;ELK3;ELK4;ERF;ERG;ETS1;ETS2;ETV1;ETV2;ETV3;ETV3L;ETV4;ETV5;ETV6;ETV7;FEV;FLI1;GABPA;SPDEF;SPI1;SPIB;SPIC                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 | ELF1;ELF2           |
+| PLAG1_HUMAN.H11MO.0.D | 42          | 0.6268657          | 1.373306 | 3.995466 | 2.320268 | 0.001008678 | 0.1752714 | More than 3 adjacent zinc finger factors{2.3.3} | PLAG factors{2.3.3.25}        | BCL6;BCL6B;CTCF;CTCFL;FEZF1;FEZF2;GFI1;GFI1B;GLI1;GLI2;GLI3;GLI4;GLIS1;GLIS2;GLIS3;HKR1;MTF1;MYNN;MZF1;OSR2;OVOL1;OVOL2;PLAG1;PLAGL1;PLAGL2;PRDM1;PRDM14;PRDM6;SCRT1;SCRT2;SNAI1;SNAI2;SNAI3;WT1;YY1;YY2;ZBTB12;ZBTB14;ZBTB18;ZBTB20;ZBTB26;ZBTB42;ZBTB45;ZBTB47;ZBTB48;ZBTB49;ZBTB6;ZBTB7A;ZBTB7B;ZBTB7C;ZFP14;ZFP2;ZFP28;ZFP30;ZFP37;ZFP42;ZFP64;ZFP69;ZFP69B;ZFP82;ZFP91;ZFX;ZIC1;ZIC2;ZIC3;ZIC4;ZIC5;ZIK1;ZIM3;ZKSCAN1;ZKSCAN2;ZKSCAN3;ZKSCAN4;ZNF121;ZNF124;ZNF133;ZNF136;ZNF138;ZNF14;ZNF140;ZNF143;ZNF146;ZNF148;ZNF155;ZNF157;ZNF160;ZNF169;ZNF175;ZNF177;ZNF18;ZNF180;ZNF181;ZNF2;ZNF20;ZNF212;ZNF213;ZNF214;ZNF221;ZNF222;ZNF223;ZNF224;ZNF225;ZNF226;ZNF227;ZNF229;ZNF230;ZNF232;ZNF233;ZNF234;ZNF235;ZNF24;ZNF25;ZNF250;ZNF257;ZNF26;ZNF260;ZNF263;ZNF264;ZNF268;ZNF274;ZNF276;ZNF28;ZNF280A;ZNF280B;ZNF280C;ZNF280D;ZNF281;ZNF282;ZNF283;ZNF284;ZNF285;ZNF286A;ZNF286B;ZNF3;ZNF30;ZNF300;ZNF302;ZNF317;ZNF32;ZNF320;ZNF322;ZNF324;ZNF324B;ZNF329;ZNF331;ZNF333;ZNF33A;ZNF33B;ZNF343;ZNF345;ZNF347;ZNF350;ZNF354A;ZNF354B;ZNF362;ZNF366;ZNF383;ZNF384;ZNF394;ZNF397;ZNF398;ZNF404;ZNF41;ZNF410;ZNF419;ZNF420;ZNF431;ZNF432;ZNF436;ZNF439;ZNF44;ZNF440;ZNF442;ZNF443;ZNF446;ZNF449;ZNF45;ZNF460;ZNF468;ZNF479;ZNF484;ZNF490;ZNF500;ZNF502;ZNF524;ZNF525;ZNF528;ZNF543;ZNF544;ZNF546;ZNF547;ZNF548;ZNF549;ZNF554;ZNF555;ZNF557;ZNF558;ZNF559;ZNF561;ZNF562;ZNF563;ZNF564;ZNF566;ZNF567;ZNF568;ZNF57;ZNF570;ZNF571;ZNF572;ZNF577;ZNF581;ZNF582;ZNF583;ZNF585A;ZNF586;ZNF589;ZNF595;ZNF599;ZNF600;ZNF605;ZNF607;ZNF611;ZNF613;ZNF614;ZNF615;ZNF616;ZNF619;ZNF620;ZNF621;ZNF625;ZNF627;ZNF649;ZNF652;ZNF653;ZNF665;ZNF667;ZNF669;ZNF670;ZNF672;ZNF679;ZNF680;ZNF683;ZNF689;ZNF692;ZNF701;ZNF705D;ZNF705E;ZNF705G;ZNF708;ZNF709;ZNF71;ZNF710;ZNF713;ZNF721;ZNF727;ZNF729;ZNF736;ZNF75A;ZNF75D;ZNF76;ZNF763;ZNF764;ZNF765;ZNF768;ZNF77;ZNF771;ZNF773;ZNF774;ZNF776;ZNF777;ZNF780A;ZNF780B;ZNF782;ZNF785;ZNF799;ZNF805;ZNF808;ZNF81;ZNF813;ZNF816;ZNF823;ZNF829;ZNF836;ZNF841;ZNF844;ZNF845;ZNF846;ZNF85;ZNF853;ZNF860;ZNF878;ZNF891;ZNF99;ZSCAN16;ZSCAN2;ZSCAN22;ZSCAN23;ZSCAN29;ZSCAN31;ZSCAN32;ZSCAN4;ZSCAN5A;ZSCAN5B;ZSCAN5C;ZSCAN9;ZXDA;ZXDB;ZXDC | PLAG1;PLAGL1        |
+| EHF_HUMAN.H11MO.0.B   | 20          | 0.2985075          | 1.361218 | 4.265267 | 2.450128 | 0.001663725 | 0.1752714 | Ets-related factors{3.5.2}                      | EHF-like factors{3.5.2.4}     | EHF;ELF1;ELF2;ELF3;ELF4;ELF5;ELK1;ELK3;ELK4;ERF;ERG;ETS1;ETS2;ETV1;ETV2;ETV3;ETV3L;ETV4;ETV5;ETV6;ETV7;FEV;FLI1;GABPA;SPDEF;SPI1;SPIB;SPIC                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 | EHF;ELF3;ELF5       |
+| GSC_HUMAN.H11MO.0.D   | 7           | 0.1044776          | 1.351318 | 8.185730 | 3.600951 | 0.005898793 | 0.3266229 | Paired-related HD factors{3.1.3}                | GSC{3.1.3.9}                  | ALX1;ALX3;ALX4;ARGFX;ARX;CRX;DMBX1;DPRX;DRGX;DUX4;DUXA;ESX1;GSC;GSC2;HESX1;ISX;LEUTX;MIXL1;NOBOX;OTP;OTX1;OTX2;PHOX2A;PHOX2B;PITX1;PITX2;PITX3;PROP1;PRRX1;PRRX2;RAX;RAX2;RHOXF1;RHOXF2;SEBOX;SHOX;SHOX2;TPRX1;UNCX;VSX1;VSX2                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              | GSC2;GSC            |
+
+### Identification of master regulator TFs
+
+When a group of enhancers is coordinately altered in a specific sample subset, this is often the result of an altered upstream *master regulator* transcription factor in the gene regulatory network. *ELMER* tries to identify such transcription factors corresponding to each of the TF binding motifs enriched from the previous analysis step. For each enriched motif, *ELMER* takes the average DNA methylation of all distal probes (in significant probe-gene pairs) that contain that motif occurrence (within a ±250bp region) and compares this average DNA methylation to the expression of each gene annotated as a human TF.
+
+> 当一组增强子在特定样本子集中协同改变时，这通常是基因调控网络中上游主调控转录因子改变的结果。ELMER试图识别与先前分析步骤中丰富的每个TF结合基序相对应的转录因子。对于每个富集的基序，ELMER取包含该基序发生（在±250bp区域内）的所有远端探针（在重要的探针基因对中）的平均DNA甲基化，并将该平均DNA甲基化与注释为人类TF的每个基因的表达进行比较。
+
+In the Unsupervised mode, a statistical test is performed for each motif-TF pair, as follows. All samples are divided into two groups: the M group, which consists of the 20% of samples with the highest average methylation at all motif-adjacent probes, and the U group, which consisted of the 20% of samples with the lowest methylation. This step is performed by the get.TFs function, which takes *minSubgroupFrac* as an input parameter, again with a default of 20%. For each candidate motif-TF pair, the Mann-Whitney U test is used to test the null hypothesis that overall gene expression in group M is greater or equal than that in group U. This non-parametric test was used in order to minimize the effects of expression outliers, which can occur across a very wide dynamic range. For each motif tested, this results in a raw p-value (Pr) for each of the human TFs.
+
+> 在无监督模式下，对每个motif-TF对进行统计测试，如下所示。所有样本分为两组：M组，由所有基序相邻探针中平均甲基化最高的20%样本组成；U组，由甲基化最低的20%样本组成。此步骤由get执行。TFs函数，将minSubgroupFrac作为输入参数，默认值为20%。对于每个候选基序TF对，使用Mann-Whitney U检验来检验零假设，即M组的整体基因表达大于或等于U组。该非参数测试用于最小化表达式异常值的影响，这些异常值可能发生在非常宽的动态范围内。对于测试的每个基序，这会导致每个人类TF的原始p值（Pr）。
+
+All TFs are ranked by their −log10(Pr) values, and those falling within the top 5% of this ranking were considered candidate upstream regulators. The best upstream TFs which are known to recognize to specific binding motif are automatically extracted as putative regulatory TFs, and rank ordered plots are created to visually inspect these relationships, as shown in the example below. Because the same motif can be recognized by many transcription factors of the same binding domain family, we define these relationships at both the family and subfamily classification level using the classifications from TFClass database (Wingender, Schoeps, and Dönitz 2013).
+
+> 所有TF均按其−log10（Pr）值和排名前5%的值被视为候选上游监管机构。已知识别特定结合基序的最佳上游TF被自动提取为假定的调节TF，并创建秩序图以直观地检查这些关系，如下面的示例所示。由于同一结合域家族的许多转录因子可以识别相同的基序，我们使用TFClass数据库中的分类在家族和亚家族分类水平上定义了这些关系（Wingender、Schoeps和Dönitz 2013）。
+
+The Supervised mode uses the same approach as described for the identification of putative target gene(s) step. The U and M groups are one of the the label group of samples and the *minSubgroupFrac* parameter is set to 100% to use all samples from both groups in the statistical test.
+
+> 监督模式使用与所述的识别假定目标基因步骤相同的方法。U组和M组是样本的标签组之一，minSubgroupFrac参数设置为100%，以在统计测试中使用两组中的所有样本。
+
+    #-------------------------------------------------------------
+    # Step 3.4: Identifying regulatory TFs                        |
+    #-------------------------------------------------------------
+    TF <- get.TFs(
+      data = mae, 
+      group.col = group.col,
+      group1 = group1,
+      group2 =  group2,
+      mode = "supervised",
+      enriched.motif = enriched.motif,
+      dir.out = dir.out, 
+      cores = cores,
+      save.plots = FALSE,
+      diff.dir = direction,
+      label = direction
+    )
+
+    # One of the output from the previous function is a file with the raking of TF,
+    # for each motif. It will be used for plotting purposes
+    TF.meth.cor <- get(load(paste0(dir.out,"/getTF.",direction,".TFs.with.motif.pvalue.rda")))
+
+The output of this step is a data frame with the following columns:
+
+-   *motif*: enriched motif name.
+
+-   *top_5percent_TFs*: the top 5% TFs ranked
+
+-   *potential.TFs.family*: TF from the "top_5percent_TFs" that belongs to the same family as the TF of the motif,
+
+-   *top.potential.TFs.family* is the highest ranked TF belonging to the same family as the TF of the motif (same as the first TF from *potential.TFs.family* column).
+
+-   *potential.TFs.subfamily* and *top.potential.TFs.subfamily* are the same as *potential.TFs.family* and *top.potential.TFs.family* but considering the subfamily classification instead (you can check the classification at <http://hocomoco11.autosome.ru/human/mono?full=true>).
+
+> 此步骤的输出是具有以下列的数据帧：
+>
+> motif：丰富的motif名称。
+>
+> top\\u 5percent\\u TFs：排名前5%的TFs
+>
+> 潜在.TFs。家族：来自"top\\u 5percent\\u TFs"的TF，与主题的TF属于同一家族，
+>
+> top.potential.TFs。家族是与模体的TF属于同一家族的排名最高的TF（与潜在的TFs家族列中的第一个TF相同）。
+>
+> 势能.TFs.亚家族和top.potential.TFs。亚家族与potential.TFs.family和top.potential.TFs相同。而是考虑子家族分类（您可以检查分类
+
+<!-- -->
+
+    datatable(TF, 
+              options = list(scrollX = TRUE, keys = TRUE, pageLength = 5), 
+              rownames = FALSE)
+
+Show 5102550100 entries
+
+Search:
+
+| motif | top.potential.TF.family | top.potential.TF.subfamily | potential.TF.family | potential.TF.subfamily | top_5percent_TFs |
+|-------|-------------------------|----------------------------|---------------------|------------------------|------------------|
+
+|                       |       |     |                              |     |                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+|-----------------------|-------|-----|------------------------------|-----|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| ZN524_HUMAN.H11MO.0.D | SNAI2 |     | SNAI2;OSR2;SNAI1;GLI3;ZBTB42 |     | HMGA2;ZNF90;DMRTA2;DMBX1;HOXA3;HOXD11;HOXD13;SHOX2;PAX3;LTF;SNAI2;TWIST1;HOXA4;CEBPD;NFE2L3;YBX3;HOXB3;HOXB9;HOXD10;NKX2-5;OTP;PITX1;TEAD4;HOXA1;HOXA10;HOXA2;HOXA7;HOXB2;MEOX2;PITX2;TEAD3;GLMP;HOXC11;HOXC4;TGIF1;ATF5;JUN;HOXC10;HOXC13;OSR2;HOXA6;HOXC6;BATF;FOSL1;ARNTL2;FOXD3;HLX;SNAI1;NR5A2;HOXA5;HOXC9;FOXB1;HMX2;TWIST2;EGR1;ALX1;EN1;HOXB5;MYBL2;HOXB8;GLI3;E2F8;HOXA9;HOXD9;VDR;CENPA;HOXC8;ATF3;HIC1;OSR1;PRRX2;RUNX1;FOXL1;E2F7;AEBP1;SIM1;MAFA;ZBTB42 |
+| PLAL1_HUMAN.H11MO.0.D | SNAI2 |     | SNAI2;OSR2;SNAI1;GLI3;ZBTB42 |     | HMGA2;ZNF90;DMRTA2;DMBX1;HOXA3;HOXD11;HOXD13;SHOX2;PAX3;LTF;SNAI2;TWIST1;HOXA4;CEBPD;NFE2L3;YBX3;HOXB3;HOXB9;HOXD10;NKX2-5;OTP;PITX1;TEAD4;HOXA1;HOXA10;HOXA2;HOXA7;HOXB2;MEOX2;PITX2;TEAD3;GLMP;HOXC11;HOXC4;TGIF1;ATF5;JUN;HOXC10;HOXC13;OSR2;HOXA6;HOXC6;BATF;FOSL1;ARNTL2;FOXD3;HLX;SNAI1;NR5A2;HOXA5;HOXC9;FOXB1;HMX2;TWIST2;EGR1;ALX1;EN1;HOXB5;MYBL2;HOXB8;GLI3;E2F8;HOXA9;HOXD9;VDR;CENPA;HOXC8;ATF3;HIC1;OSR1;PRRX2;RUNX1;FOXL1;E2F7;AEBP1;SIM1;MAFA;ZBTB42 |
+| ELF2_HUMAN.H11MO.0.C  |       |     |                              |     | HMGA2;ZNF90;DMRTA2;DMBX1;HOXA3;HOXD11;HOXD13;SHOX2;PAX3;LTF;SNAI2;TWIST1;HOXA4;CEBPD;NFE2L3;YBX3;HOXB3;HOXB9;HOXD10;NKX2-5;OTP;PITX1;TEAD4;HOXA1;HOXA10;HOXA2;HOXA7;HOXB2;MEOX2;PITX2;TEAD3;GLMP;HOXC11;HOXC4;TGIF1;ATF5;JUN;HOXC10;HOXC13;OSR2;HOXA6;HOXC6;BATF;FOSL1;ARNTL2;FOXD3;HLX;SNAI1;NR5A2;HOXA5;HOXC9;FOXB1;HMX2;TWIST2;EGR1;ALX1;EN1;HOXB5;MYBL2;HOXB8;GLI3;E2F8;HOXA9;HOXD9;VDR;CENPA;HOXC8;ATF3;HIC1;OSR1;PRRX2;RUNX1;FOXL1;E2F7;AEBP1;SIM1;MAFA;ZBTB42 |
+| PLAG1_HUMAN.H11MO.0.D | SNAI2 |     | SNAI2;OSR2;SNAI1;GLI3;ZBTB42 |     | HMGA2;ZNF90;DMRTA2;DMBX1;HOXA3;HOXD11;HOXD13;SHOX2;PAX3;LTF;SNAI2;TWIST1;HOXA4;CEBPD;NFE2L3;YBX3;HOXB3;HOXB9;HOXD10;NKX2-5;OTP;PITX1;TEAD4;HOXA1;HOXA10;HOXA2;HOXA7;HOXB2;MEOX2;PITX2;TEAD3;GLMP;HOXC11;HOXC4;TGIF1;ATF5;JUN;HOXC10;HOXC13;OSR2;HOXA6;HOXC6;BATF;FOSL1;ARNTL2;FOXD3;HLX;SNAI1;NR5A2;HOXA5;HOXC9;FOXB1;HMX2;TWIST2;EGR1;ALX1;EN1;HOXB5;MYBL2;HOXB8;GLI3;E2F8;HOXA9;HOXD9;VDR;CENPA;HOXC8;ATF3;HIC1;OSR1;PRRX2;RUNX1;FOXL1;E2F7;AEBP1;SIM1;MAFA;ZBTB42 |
+| EHF_HUMAN.H11MO.0.B   |       |     |                              |     | HMGA2;ZNF90;DMRTA2;DMBX1;HOXA3;HOXD11;HOXD13;SHOX2;PAX3;LTF;SNAI2;TWIST1;HOXA4;CEBPD;NFE2L3;YBX3;HOXB3;HOXB9;HOXD10;NKX2-5;OTP;PITX1;TEAD4;HOXA1;HOXA10;HOXA2;HOXA7;HOXB2;MEOX2;PITX2;TEAD3;GLMP;HOXC11;HOXC4;TGIF1;ATF5;JUN;HOXC10;HOXC13;OSR2;HOXA6;HOXC6;BATF;FOSL1;ARNTL2;FOXD3;HLX;SNAI1;NR5A2;HOXA5;HOXC9;FOXB1;HMX2;TWIST2;EGR1;ALX1;EN1;HOXB5;MYBL2;HOXB8;GLI3;E2F8;HOXA9;HOXD9;VDR;CENPA;HOXC8;ATF3;HIC1;OSR1;PRRX2;RUNX1;FOXL1;E2F7;AEBP1;SIM1;MAFA;ZBTB42 |
+
+Showing 1 to 5 of 20 entries
+
+Previous1234Next
+
+    datatable(TF.meth.cor[1:10,1:6], 
+              options = list(scrollX = TRUE, keys = TRUE, pageLength = 5), 
+              rownames = TRUE)
+
+Show 5102550100 entries
+
+Search:
+
+|     | ZN524_HUMAN.H11MO.0.D | PLAL1_HUMAN.H11MO.0.D | ELF2_HUMAN.H11MO.0.C | PLAG1_HUMAN.H11MO.0.D | EHF_HUMAN.H11MO.0.B | ELF5_HUMAN.H11MO.0.A |
+|-----|-----------------------|-----------------------|----------------------|-----------------------|---------------------|----------------------|
+
+|        |     |     |     |     |     |     |
+|--------|-----|-----|-----|-----|-----|-----|
+| TFAP2A | 1   | 1   | 1   | 1   | 1   | 1   |
+| TFAP2B | 1   | 1   | 1   | 1   | 1   | 1   |
+| TFAP2C | 1   | 1   | 1   | 1   | 1   | 1   |
+| TFAP2D | 1   | 1   | 1   | 1   | 1   | 1   |
+| TFAP2E | 1   | 1   | 1   | 1   | 1   | 1   |
+
+Showing 1 to 5 of 10 entries
+
+Previous12Next
+
+### ELMER visualization functions
+
+The pairs identified by ELMER can be visualized through a heatmap using the function `heatmapPairs`. The first heatmap shows the DNA methylation levels, while the second heatmap shows the gene expression levels of the target genes. The last heatmap shows the distance between the probe and the gene TSS.
+
+> ELMER识别的配对可以使用函数heatmapPairs通过热图可视化。第一个热图显示了DNA甲基化水平，而第二个热图显示了目标基因的基因表达水平。最后一张热图显示了探针和基因TSS之间的距离。
+
+    heatmapPairs(
+      data = mae, 
+      group.col = group.col,
+      group1 = group1, 
+      group2 = group2, 
+      annotation.col = c("gender"),
+      pairs = pair,
+      filename =  NULL
+    )
+
+When ELMER Identifies the enriched motifs for the distal enhancer probes which are significantly differentially methylated and linked to putative target gene, it will plot the Odds Ratio (x-axis) for the each motif found.
+
+The list of enriched motifs for the hypo direction (probes hypomethylated in GBM group compared to the LGG group) with lower OR \>= 1.1 is found in the Figure below.
+
+> 当ELMER识别出远端增强子探针的富集基序，这些基序显著差异甲基化并与假定的靶基因相连时，它将绘制所发现的每个基序的优势比（x轴）。
+>
+> 下图中显示了低或\>=1.1的亚甲基方向的富集基序列表（与LGG组相比，GBM组中的探针低甲基化）。
+
+    motif.enrichment.plot(
+      motif.enrichment = motif.enrichment, 
+      save = FALSE,
+      significant = list(lowerOR = 1.1)
+    ) # Filter motifs in the plot lowerOR > 1.3
+
+After finding the enriched motifs, [ELMER](http://bioconductor.org/packages/ELMER/) identifies regulatory transcription factors (TFs) whose expression is associated with DNA methylation at motifs. [ELMER](http://bioconductor.org/packages/ELMER/) automatically creates a TF ranking plot for each enriched motif. This plot shows the TF ranking plots based on the association score (−log(p−value)) between TF expression and DNA methylation of the motif. This plot represents the rank of p-values of all TF, the top 3, the TF classified in the same family and sub-family according to TFClass database are highlighted. The dashed line represents the top 5% of all TF.
+
+> 在发现富集的基序后，ELMER鉴定了调控转录因子（TF），其表达与基序处的DNA甲基化有关。ELMER自动为每个丰富的图案创建TF排序图。该图显示了基于关联分数的TF排序图(−对数（p−TF表达和基序的DNA甲基化之间。该图表示所有TF的p值的秩，突出显示了前3位、根据TFClass数据库分类在同一家族和子家族中的TF。虚线表示所有TF的前5%。
+
+    grid:TF.rank.plot(motif.pvalue=TF.meth.cor, motif=TF$motif[1], save=FALSE)
+
+                                                   \| 0%
+
+\|====================================================\|100% \~0 s remaining\
+\|====================================================\|100% Completed after 0 s
+
+Also, for each motif, we can take a look at the three most relevant TFs. For example, Figure below shows the average DNA methylation level of sites with the first motif plotted against the expression of some top TFs associated with it. We can see that the GBM samples have a lower average methylation level of sites with the motif plotted and a higher average expression of the TFs.
+
+> 此外，对于每个主题，我们可以查看三个最相关的TF。例如，下图显示了具有第一个基序的位点的平均DNA甲基化水平与一些与其相关的顶部TF的表达相对应。我们可以看到，GBM样本具有较低的平均甲基化水平和较高的TFs平均表达。
+
+    png("TF.png",width = 800, height = 400)
+    scatter.plot(
+      data = mae, 
+      category = group.col, 
+      save = FALSE, 
+      lm_line = TRUE,
+      byTF = list(
+        TF = unlist(stringr::str_split(TF[1,"top_5percent_TFs"],";"))[1:4], 
+        probe = enriched.motif[[TF$motif[1]]]
+      )
+    )
+    dev.off()
+
+# Conclusion
+
+This workflow outlines how one can use specific Bioconductor packages for the analysis of cancer genomics and epigenomics data derived from the TCGA. In addition, we highlight the importance of using ENCODE and Roadmap data to inform on the biology of the non-coding elements defined by functional roles in gene regulation. We introduced [TCGAbiolinks](http://bioconductor.org/packages/TCGAbiolinks/) and [RTCGAToolbox](http://bioconductor.org/packages/RTCGAToolbox/) Bioconductor packages in order to illustrate how one can acquire TCGA specific data, followed by key steps for genomics analysis using [GAIA](http://bioconductor.org/packages/gaia/) package and [maftools](http://bioconductor.org/packages/maftools/), for transcriptomic analysis using [TCGAbiolinks](http://bioconductor.org/packages/TCGAbiolinks/), [pathview](http://bioconductor.org/packages/pathview/) packages and for DNA methylation analysis using [TCGAbiolinks](http://bioconductor.org/packages/TCGAbiolinks/) package. An inference of gene regulatory networks was also introduced by [MINET](http://bioconductor.org/packages/minet/) package. Finally, we introduced Bioconductor packages [AnnotationHub](http://bioconductor.org/packages/AnnotationHub/), [ChIPSeeker](http://bioconductor.org/packages/ChIPseeker/), [ComplexHeatmap](http://bioconductor.org/packages/ComplexHeatmap/), and [ELMER](http://bioconductor.org/packages/ELMER/) to illustrate how one can acquire ENCODE/Roadmap data and integrate these data with the results obtained from analyzing TCGA data to identify and characterize candidate regulatory enhancers associated with cancer.
+
+> 该工作流程概述了如何使用特定的生物导体包分析来自TCGA的癌症基因组学和表观基因组学数据。此外，我们强调了使用编码和路线图数据来告知由基因调控中的功能角色定义的非编码元件的生物学的重要性。我们介绍了TCGAbiolinks和RTCGAToolbox生物导体包，以说明如何获取TCGA特定数据，然后介绍了使用GAIA包和maftools进行基因组分析、使用TCGAbiolinks、pathview包进行转录组分析和使用TCGAbiolinks包进行DNA甲基化分析的关键步骤。MINET软件包还引入了基因调控网络的推断。最后，我们介绍了生物导体包AnnotationHub、ChIPSeeker、ComplexHeatmap和ELMER，以说明如何获取编码/路线图数据，并将这些数据与分析TCGA数据获得的结果集成，以识别和表征与癌症相关的候选调控增强子。
+
+# Author contributions
+
+HN conceived the study. HN, MC and GB provided direction on the design of the Transcriptomics, Genomics, master regulatory networks and DNA methylation workflows. TCS developed and tested sections "Experimental data", "DNA methylation analysis", "Motif analysis" and "Integrative analysis". AC developed and tested section "Transcriptomic analysis". CO developed and tested the section "Inference of gene regulatory networks". FDA developed and tested section "Genomic analysis". TCS, AC, CO, and FDA prepared the first draft of the manuscript. All authors were involved in the revision of the draft manuscript and have agreed to the final content. Also, AC, TS, CO, MC, GB, and HN are authors of the TCGAbiolinks package and MC is the author of the GAIA package.
+
+# Competing interests
+
+No competing interests were disclosed.
+
+# Grant information
+
+The project was supported by the São Paulo Research Foundation ([FAPESP](http://www.fapesp.br/)) (2015/02844-7 and 2016/01389-7 to T.C.S. & H.N. and 2015/07925-5 to H.N.), the [BridgeIRIS project](http://mlg.ulb.ac.be/BridgeIRIS), funded by INNOVIRIS, Region de Bruxelles Capitale, Brussels, Belgium, and by GENomic profiling of Gastrointestinal Inflammatory-Sensitive CANcers ([GENGISCAN](http://mlg.ulb.ac.be/GENGISCAN)), Belgian FNRS PDR (T100914F to G.B.). Funding for open access charge: São Paulo Research Foundation (FAPESP) (2015/07925-5).
+
+# Acknowledgements
+
+We are grateful to all the authors of the packages used in this article. Also, we would like to thank The GDC Support Team for the provided help, which was necessary in order to update the TCGAbiolinks package to use GDC API.
+
+# References
+
+Aleksandra Pekowska, Simon Anders. 2015. *ChIP-Seq Analysis Basics*.
+
+Altay, Gökmen, and Frank Emmert-Streib. 2010. "Inferring the Conservative Causal Core of Gene Regulatory Networks." *BMC Systems Biology* 4 (1): 132.
+
+Bernstein, B. E., J. A. Stamatoyannopoulos, J. F. Costello, B. Ren, A. Milosavljevic, A. Meissner, M. Kellis, et al. 2010. "The NIH Roadmap Epigenomics Mapping Consortium." *Nat. Biotechnol.* 28 (10): 1045--8.
+
+Bernstein, Bradley E, Michael Kamal, Kerstin Lindblad-Toh, Stefan Bekiranov, Dione K Bailey, Dana J Huebert, Scott McMahon, et al. 2005. "Genomic Maps and Comparative Analysis of Histone Modifications in Human and Mouse." *Cell* 120 (2): 169--81.
+
+Bonasio, Roberto, Shengjiang Tu, and Danny Reinberg. 2010. "Molecular Signals of Epigenetic States." *Science* 330 (6004): 612--16.
+
+Bullard, James H, Elizabeth Purdom, Kasper D Hansen, and Sandrine Dudoit. 2010. "Evaluation of Statistical Methods for Normalization and Differential Expression in mRNA-Seq Experiments." *BMC Bioinformatics* 11 (1): 94.
+
+Ceccarelli, Michele, FlorisP. Barthel, TathianeM. Malta, ThaisS. Sabedot, SofieR. Salama, BradleyA. Murray, Olena Morozova, et al. 2016. "Molecular Profiling Reveals Biologically Discrete Subsets and Pathways of Progression in Diffuse Glioma." *Cell* 164 (3): 550--63. <https://doi.org/http://dx.doi.org/10.1016/j.cell.2015.12.028>.
+
+Colaprico, Antonio, Tiago C. Silva, Catharina Olsen, Luciano Garofano, Claudia Cava, Davide Garolini, Thais S. Sabedot, et al. 2016. "TCGAbiolinks: An R/Bioconductor Package for Integrative Analysis of Tcga Data." *Nucleic Acids Research* 44 (8): e71. <https://doi.org/10.1093/nar/gkv1507>.
+
+Consortium, ENCODE Project, and others. 2011. "A User's Guide to the Encyclopedia of Dna Elements (Encode)." *PLoS Biol* 9 (4): e1001046.
+
+Creyghton, Menno P, Albert W Cheng, G Grant Welstead, Tristan Kooistra, Bryce W Carey, Eveline J Steine, Jacob Hanna, et al. 2010. "Histone H3k27ac Separates Active from Poised Enhancers and Predicts Developmental State." *Proceedings of the National Academy of Sciences* 107 (50): 21931--6.
+
+Davis, Caleb F, Christopher J Ricketts, Min Wang, Lixing Yang, Andrew D Cherniack, Hui Shen, Christian Buhay, et al. 2014. "The Somatic Genomic Landscape of Chromophobe Renal Cell Carcinoma." *Cancer Cell* 26 (3): 319--30.
+
+Deaton, Aimée M, and Adrian Bird. 2011. "CpG Islands and the Regulation of Transcription." *Genes & Development* 25 (10): 1010--22.
+
+Droit, A, R Gottardo, G Roberston, and L Li. 2015. "RGADEM: De Novo Motif Discovery."
+
+Durinck, Steffen, Yves Moreau, Arek Kasprzyk, Sean Davis, Bart De Moor, Alvis Brazma, and Wolfgang Huber. 2005. "BioMart and Bioconductor: A Powerful Link Between Biological Databases and Microarray Data Analysis." *Bioinformatics* 21 (16): 3439--40.
+
+Durinck, Steffen, Paul T Spellman, Ewan Birney, and Wolfgang Huber. 2009. "Mapping Identifiers for the Integration of Genomic Datasets with the R/Bioconductor Package biomaRt." *Nature Protocols* 4 (8): 1184--91.
+
+Faith, Jeremiah J, Boris Hayete, Joshua T Thaden, Ilaria Mogno, Jamey Wierzbowski, Guillaume Cottarel, Simon Kasif, James J Collins, and Timothy S Gardner. 2007. "Large-Scale Mapping and Validation of Escherichia Coli Transcriptional Regulation from a Compendium of Expression Profiles." *PLoS Biol* 5 (1): e8.
+
+Fingerman, I. M., L. McDaniel, X. Zhang, W. Ratzat, T. Hassan, Z. Jiang, R. F. Cohen, and G. D. Schuler. 2011. "NCBI Epigenomics: a new public resource for exploring epigenomic data sets." *Nucleic Acids Res.* 39 (Database issue): D908--912.
+
+Giorgio, Elisa, Daniel Robyr, Malte Spielmann, Enza Ferrero, Eleonora Di Gregorio, Daniele Imperiale, Giovanna Vaula, et al. 2015. "A Large Genomic Deletion Leads to Enhancer Adoption by the Lamin B1 Gene: A Second Path to Autosomal Dominant Leukodystrophy (Adld)." *Human Molecular Genetics*, ddv065.
+
+Gröschel, Stefan, Mathijs A Sanders, Remco Hoogenboezem, Elzo de Wit, Britta AM Bouwman, Claudia Erpelinck, Vincent HJ van der Velden, et al. 2014. "A Single Oncogenic Enhancer Rearrangement Causes Concomitant Evi1 and Gata2 Deregulation in Leukemia." *Cell* 157 (2): 369--81.
+
+Hawkins, R. D., G. C. Hon, and B. Ren. 2010. "Next-generation genomics: an integrative approach." *Nat. Rev. Genet.* 11 (7): 476--86.
+
+Heintzman, Nathaniel D, Gary C Hon, R David Hawkins, Pouya Kheradpour, Alexander Stark, Lindsey F Harp, Zhen Ye, et al. 2009. "Histone Modifications at Human Enhancers Reflect Global Cell-Type-Specific Gene Expression." *Nature* 459 (7243): 108--12.
+
+Heintzman, Nathaniel D, Rhona K Stuart, Gary Hon, Yutao Fu, Christina W Ching, R David Hawkins, Leah O Barrera, et al. 2007. "Distinct and Predictive Chromatin Signatures of Transcriptional Promoters and Enhancers in the Human Genome." *Nature Genetics* 39 (3): 311--18.
+
+Heinz, Sven, Christopher Benner, Nathanael Spann, Eric Bertolino, Yin C Lin, Peter Laslo, Jason X Cheng, Cornelis Murre, Harinder Singh, and Christopher K Glass. 2010. "Simple Combinations of Lineage-Determining Transcription Factors Prime Cis-Regulatory Elements Required for Macrophage and B Cell Identities." *Molecular Cell* 38 (4): 576--89.
+
+Huber, Wolfgang, Vincent J Carey, Robert Gentleman, Simon Anders, Marc Carlson, Benilton S Carvalho, Hector Corrada Bravo, et al. 2015. "Orchestrating High-Throughput Genomic Analysis with Bioconductor." *Nature Methods* 12 (2): 115--21.
+
+Kannan, Lavanya, Marcel Ramos, Angela Re, Nehme El-Hachem, Zhaleh Safikhani, Deena MA Gendoo, Sean Davis, et al. 2015. "Public Data and Open Source Tools for Multi-Assay Genomic Investigation of Disease." *Briefings in Bioinformatics*, bbv080.
+
+Kulakovskiy, Ivan V, Ilya E Vorontsov, Ivan S Yevshin, Anastasiia V Soboleva, Artem S Kasianov, Haitham Ashoor, Wail Ba-Alawi, et al. 2016. "HOCOMOCO: Expansion and Enhancement of the Collection of Transcription Factor Binding Sites Models." *Nucleic Acids Research* 44 (D1): D116--D125.
+
+Kundaje, Anshul, Wouter Meuleman, Jason Ernst, Misha Bilenky, Angela Yen, Alireza Heravi-Moussavi, Pouya Kheradpour, et al. 2015. "Integrative Analysis of 111 Reference Human Epigenomes." *Nature* 518 (7539): 317--30.
+
+Li, Leping. 2009. "GADEM: A Genetic Algorithm Guided Formation of Spaced Dyads Coupled with an Em Algorithm for Motif Discovery." *Journal of Computational Biology* 16 (2): 317--29.
+
+Luo, Weijun, and Cory Brouwer. 2013. "Pathview: An R/Bioconductor Package for Pathway-Based Data Integration and Visualization." *Bioinformatics* 29 (14): 1830--1.
+
+Marabita, Francesco, Malin Almgren, Maléne E Lindholm, Sabrina Ruhrmann, Fredrik Fagerström-Billai, Maja Jagodic, Carl J Sundberg, et al. 2013. "An Evaluation of Analysis Pipelines for Dna Methylation Profiling Using the Illumina Humanmethylation450 Beadchip Platform." *Epigenetics* 8 (3): 333--46.
+
+Margolin, Adam A, Ilya Nemenman, Katia Basso, Chris Wiggins, Gustavo Stolovitzky, Riccardo D Favera, and Andrea Califano. 2006. "ARACNE: An Algorithm for the Reconstruction of Gene Regulatory Networks in a Mammalian Cellular Context." *BMC Bioinformatics* 7 (Suppl 1): S7.
+
+Mayakonda, Anand, and H Phillip Koeffler. 2016. "Maftools: Efficient Analysis, Visualization and Summarization of Maf Files from Large-Scale Cohort Based Cancer Studies." *bioRxiv*, 052662.
+
+Mermel, Craig H, Steven E Schumacher, Barbara Hill, Matthew L Meyerson, Rameen Beroukhim, Gad Getz, and others. 2011. "GISTIC2. 0 Facilitates Sensitive and Confident Localization of the Targets of Focal Somatic Copy-Number Alteration in Human Cancers." *Genome Biol* 12 (4): R41.
+
+Meyer, Patrick E, Kevin Kontos, Frederic Lafitte, and Gianluca Bontempi. 2007. "Information-Theoretic Inference of Large Transcriptional Regulatory Networks." *EURASIP Journal on Bioinformatics and Systems Biology* 2007: 8--8.
+
+Meyer, Patrick E., Frédéric Lafitte, and Gianluca Bontempi. 2008. "Minet: A R/Bioconductor Package for Inferring Large Transcriptional Networks Using Mutual Information." *BMC Bioinformatics* 9 (1): 1--10. [minet: A R/Bioconductor Package for Inferring Large Transcriptional Networks Using Mutual Information \| BMC Bioinformatics \| Full Text](https://doi.org/10.1186/1471-2105-9-461).
+
+Montojo, J, K Zuberi, H Rodriguez, F Kazi, G Wright, S L Donaldson, Q Morris, and G D Bader. 2010. "GeneMANIA Cytoscape plugin: fast gene function predictions on the desktop." *Bioinformatics* 26 (22): 2927--8.
+
+Morgan M, Hester J, Obenchain V, and Pagès H. n.d. "SummarizedExperiment: SummarizedExperiment Container. R Package Version 1.1.0." [Bioconductor - SummarizedExperiment](http://bioconductor.org/packages/SummarizedExperiment/).
+
+Morgan M, Tenenbaum D, Carlson M, and Arora S. n.d. "AnnotationHub: Client to Access Annotationhub Resources. R Package Version 2.2.2." [Bioconductor - Gviz](http://bioconductor.org/packages/Gviz/).
+
+Network, Cancer Genome Atlas, and others. 2012a. "Comprehensive Molecular Characterization of Human Colon and Rectal Cancer." *Nature* 487 (7407): 330--37.
+
+---------. 2012b. "Comprehensive Molecular Portraits of Human Breast Tumours." *Nature* 490 (7418): 61--70.
+
+---------. 2015a. "Comprehensive Genomic Characterization of Head and Neck Squamous Cell Carcinomas." *Nature* 517 (7536): 576--82.
+
+---------. 2015b. "Genomic Classification of Cutaneous Melanoma." *Cell* 161 (7): 1681--96.
+
+Network, Cancer Genome Atlas Research, and others. 2012. "Comprehensive Genomic Characterization of Squamous Cell Lung Cancers." *Nature* 489 (7417): 519--25.
+
+---------. 2013. "Comprehensive Molecular Characterization of Clear Cell Renal Cell Carcinoma." *Nature* 499 (7456): 43--49.
+
+---------. 2014a. "Comprehensive Molecular Characterization of Gastric Adenocarcinoma." *Nature* 513 (7517): 202--9.
+
+---------. 2014b. "Comprehensive Molecular Characterization of Gastric Adenocarcinoma." *Nature* 513 (7517): 202--9.
+
+---------. 2014c. "Comprehensive Molecular Profiling of Lung Adenocarcinoma." *Nature* 511 (7511): 543--50.
+
+---------. 2014d. "Integrated Genomic Characterization of Papillary Thyroid Carcinoma." *Cell* 159 (3): 676--90.
+
+---------. 2015. "The Molecular Taxonomy of Primary Prostate Cancer." *Cell* 163 (4): 1011--25.
+
+---------. 2016. "Comprehensive Molecular Characterization of Papillary Renal-Cell Carcinoma." *N Engl J Med* 2016 (374): 135--45.
+
+Nishida, Hiromi, Takahiro Suzuki, Shinji Kondo, Hisashi Miura, Yu-ichi Fujimura, and Yoshihide Hayashizaki. 2006. "Histone H3 Acetylated at Lysine 9 in Promoter Is Associated with Low Nucleosome Density in the Vicinity of Transcription Start Site in Human Cell." *Chromosome Research* 14 (2): 203--11.
+
+Ou, J, M Brodsky, S Wolfe, and LJ Zhu. 2013. "MotifStack: Plot Stacked Logos for Single or Multiple Dna, Rna and Amino Acid Sequence."
+
+Peters, Antoine HFM, Stefan Kubicek, Karl Mechtler, Roderick J O'Sullivan, Alwin AHA Derijck, Laura Perez-Burgos, Alexander Kohlmaier, et al. 2003. "Partitioning and Plasticity of Repressive Histone Methylation States in Mammalian Chromatin." *Molecular Cell* 12 (6): 1577--89.
+
+Phillips, Theresa. 2008. "The Role of Methylation in Gene Expression." *Nature Education* 1 (1): 116.
+
+Rada-Iglesias, Alvaro, Ruchi Bajpai, Tomek Swigut, Samantha A Brugmann, Ryan A Flynn, and Joanna Wysocka. 2011. "A Unique Chromatin Signature Uncovers Early Developmental Enhancers in Humans." *Nature* 470 (7333): 279--83.
+
+Rhodes, Daniel R, and Arul M Chinnaiyan. 2005. "Integrative Analysis of the Cancer Transcriptome." *Nature Genetics* 37: S31--S37.
+
+Risso, Davide, Katja Schwartz, Gavin Sherlock, and Sandrine Dudoit. 2011. "GC-Content Normalization for Rna-Seq Data." *BMC Bioinformatics* 12 (1): 480.
+
+Robertson, Keith D. 2005. "DNA Methylation and Human Disease." *Nature Reviews Genetics* 6 (8): 597--610.
+
+Samur, Mehmet Kemal. 2014. "RTCGAToolbox: A New Tool for Exporting Tcga Firehose Data."
+
+Shi, Xingjie, Jin Liu, Jian Huang, Yong Zhou, BenChang Shia, and Shuangge Ma. 2014. "Integrative Analysis of High-Throughput Cancer Studies with Contrasted Penalization." *Genetic Epidemiology* 38 (2): 144--51.
+
+Silva, TC, A Colaprico, C Olsen, F D'Angelo, G Bontempi, M Ceccarelli, and H Noushmehr. 2016. "TCGA Workflow: Analyze Cancer Genomics and Epigenomics Data Using Bioconductor Packages [Version 2; Referees: 1 Approved, 1 Approved with Reservations]." *F1000Research* 5 (1542). <https://doi.org/10.12688/f1000research.8923.2>.
+
+Silva, Tiago C, Simon G Coetzee, Nicole Gull, Lijing Yao, Dennis J Hazelett, Houtan Noushmehr, De-Chen Lin, and Benjamin P Berman. 2018. "ELMER V.2: An R/Bioconductor Package to Reconstruct Gene Regulatory Networks from Dna Methylation and Transcriptome Profiles." *Bioinformatics*, bty902. <https://doi.org/10.1093/bioinformatics/bty902>.
+
+Stark, Chris, Bobby-Joe Breitkreutz, Teresa Reguly, Lorrie Boucher, Ashton Breitkreutz, and Mike Tyers. 2006. "BioGRID: A General Repository for Interaction Datasets." *Nucleic Acids Research* 34 (suppl 1): D535--D539. <https://doi.org/10.1093/nar/gkj109>.
+
+Sur, Inderpreet Kaur, Outi Hallikas, Anna Vähärautio, Jian Yan, Mikko Turunen, Martin Enge, Minna Taipale, Auli Karhu, Lauri A Aaltonen, and Jussi Taipale. 2012. "Mice Lacking a Myc Enhancer That Includes Human Snp Rs6983267 Are Resistant to Intestinal Tumors." *Science* 338 (6112): 1360--3.
+
+Weinstein, John N, Eric A Collisson, Gordon B Mills, Kenna R Mills Shaw, Brad A Ozenberger, Kyle Ellrott, Ilya Shmulevich, et al. 2013. "The Cancer Genome Atlas Pan-Cancer Analysis Project." *Nature Genetics* 45 (10): 1113--20.
+
+Wilks, Christopher, Melissa S Cline, Erich Weiler, Mark Diehkans, Brian Craft, Christy Martin, Daniel Murphy, et al. 2014. "The Cancer Genomics Hub (Cghub): Overcoming Cancer Through the Power of Torrential Data." *Database* 2014: bau093.
+
+Wingender, Edgar, Torsten Schoeps, and Jürgen Dönitz. 2013. "TFClass: An Expandable Hierarchical Classification of Human Transcription Factors." *Nucleic Acids Research* 41 (D1): D165--D170.
+
+Yao, Lijing, Benjamin P Berman, and Peggy J Farnham. 2015. "Demystifying the Secret Mission of Enhancers: Linking Distal Regulatory Elements to Target Genes." *Critical Reviews in Biochemistry and Molecular Biology* 50 (6): 550--73.
+
+Yao, L, H Shen, PW Laird, PJ Farnham, and BP Berman. 2015. "Inferring Regulatory Element Landscapes and Transcription Factor Networks from Cancer Methylomes." *Genome Biology* 16 (1): 105--5.
+
+Yates, Andrew, Wasiu Akanni, M Ridwan Amode, Daniel Barrell, Konstantinos Billis, Denise Carvalho-Silva, Carla Cummins, et al. 2015. "Ensembl 2016." *Nucleic Acids Research*, gkv1157.
+
+Yu, Guangchuang, Li-Gen Wang, and Qing-Yu He. 2015. "ChIPseeker: An R/Bioconductor Package for Chip Peak Annotation, Comparison and Visualization." *Bioinformatics*, btv145.
+
+Z., Gu. n.d. "ComplexHeatmap: Making Complex Heatmaps. R Package Version 1.7.1." <https://github.com/jokergoo/ComplexHeatmap>.
+
+Zheng, Siyuan, Andrew D Cherniack, Ninad Dewal, Richard A Moffitt, Ludmila Danilova, Bradley A Murray, Antonio M Lerario, et al. 2016. "Comprehensive Pan-Genomic Characterization of Adrenocortical Carcinoma." *Cancer Cell* 29 (5): 723--36.
+
+Zhou, Wanding, Peter W Laird, and Hui Shen. 2016. "Comprehensive Characterization, Annotation and Innovative Use of Infinium Dna Methylation Beadchip Probes." *Nucleic Acids Research*, gkw967.
+
+Zhou, Wanding, Peter W. Laird, and Hui Shen. 2017. "Comprehensive Characterization, Annotation and Innovative Use of Infinium Dna Methylation Beadchip Probes." *Nucleic Acids Research* 45 (4): e22. <https://doi.org/10.1093/nar/gkw967>.
